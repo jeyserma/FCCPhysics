@@ -79,9 +79,36 @@ Vec_i getSimHitLayer(Vec_f hits_r, Vec_f radii) {
     for(auto & hit_r: hits_r) {
         int layer = -1;
         for(int i=0; i<radii.size(); i++) {
-            if(abs(hit_r-radii[i]) < 4) layer = i;
+            if(hit_r > 13.0000 && hit_r < 14.2850) layer = 0;
+            //if(abs(hit_r-radii[i]) < 4) layer = i;
         }
         ret.push_back(layer);
     }
     return ret;
 }
+
+Vec_b isProducedBySecondary(Vec_SimTrackerHitData in) {
+    Vec_b ret;
+    for(auto & hit: in) {
+        // see https://github.com/key4hep/EDM4hep/blob/v00-10-05/edm4hep.yaml#L249
+        ret.push_back(hit.quality & (1 << 30));
+    }
+    return ret;
+}
+
+Vec_f getEnergyDeposition(Vec_SimTrackerHitData in) {
+    Vec_f ret;
+    for(auto & hit: in) {
+        ret.push_back(hit.EDep);
+    }
+    return ret;
+}
+
+Vec_i getCellID(Vec_SimTrackerHitData in) {
+    Vec_i ret;
+    for(auto & hit: in) {
+        ret.push_back(hit.cellID);
+    }
+    return ret;
+}
+
