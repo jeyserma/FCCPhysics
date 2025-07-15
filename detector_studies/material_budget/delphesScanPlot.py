@@ -49,6 +49,10 @@ def main(args, detector_groups, colors):
         h = ROOT.TH1D(m, "", angleBinsN, angleMin, angleMax)
         hists[m] = h
 
+    # hit multiplicities
+    nhits_barrel = ROOT.TH1D("nhits_barrel", "", angleBinsN, angleMin, angleMax)
+    nhits_endcap = ROOT.TH1D("nhits_endcap", "", angleBinsN, angleMin, angleMax)
+
     # loop over the geometry and calculate material budget for each material
     for xBin in range(1, angleBinsN+1):
         if angleDef == "theta":
@@ -63,6 +67,9 @@ def main(args, detector_groups, colors):
                 continue
             x0 = 0
 
+            if not(g[1] == "VTXDSK" or g[1] == "VTXHIGH" or g[1] == "VTXLOW"):
+                continue
+
             # barrel
             if g[0] == 1:
                 r = g[4]
@@ -70,6 +77,7 @@ def main(args, detector_groups, colors):
                 z = r / tant
                 if z < z_max:
                     x0 = 100.*g[5]/g[6]/sint
+                    nhits_barrel.SetBinContent(xBin, nhits_barrel.GetBinContent(xBin)+1)
 
             # endcap
             if g[0] == 2:
@@ -80,9 +88,8 @@ def main(args, detector_groups, colors):
                 if z < 0: continue # only one quadrant, assume symmetric
                 if r < r_max and r > r_min:
                     x0 = 100.*g[5]/g[6]/cost
-
+                    nhits_endcap.SetBinContent(xBin, nhits_endcap.GetBinContent(xBin)+1)
             hists[g[1]].SetBinContent(xBin, hists[g[1]].GetBinContent(xBin) + x0)
-
 
     # plotting
     c = ROOT.TCanvas("", "", 800, 800)
@@ -119,9 +126,13 @@ def main(args, detector_groups, colors):
     st.SetName("stack")
     hists_to_write = []
     for i,m in enumerate(detector_groups.keys()):
+        print(detector_groups[m])
         hists_merge = [hists[x] for x in detector_groups[m]]
-        hist = hists_merge[0]
-        for h in hists_merge[1:]: hist.Add(h)
+        hist = ROOT.TH1D(m, "", angleBinsN, angleMin, angleMax)
+        for h in hists_merge:
+            hist.Add(h)
+        #hist = hists_merge[0]
+        #for h in hists_merge[1:]: hist.Add(h)
 
         hist.SetName(m)
         hist.SetFillColor(colors[i])
@@ -140,6 +151,73 @@ def main(args, detector_groups, colors):
     ROOT.gPad.RedrawAxis()
     c.SaveAs(f"{args.outDir}/delphes_x0.png")
     c.SaveAs(f"{args.outDir}/delphes_x0.pdf")
+    del c, dummy, leg, st
+
+
+
+
+    # plot hit multiplicities
+    c = ROOT.TCanvas("", "", 800, 800)
+    c.SetTopMargin(0.055)
+    c.SetRightMargin(0.05)
+    c.SetLeftMargin(0.12)
+    c.SetBottomMargin(0.11)
+
+    dummy = ROOT.TH1D("dummy", "", angleBinsN, angleMin, angleMax)
+    dummy.GetXaxis().SetTitle("#theta (deg)" if angleDef == "theta" else "cos(#theta)")
+    dummy.GetYaxis().SetTitle("Hit multiplicity")
+
+    dummy.GetXaxis().SetTitleFont(43)
+    dummy.GetXaxis().SetTitleSize(32)
+    dummy.GetXaxis().SetLabelFont(43)
+    dummy.GetXaxis().SetLabelSize(28)
+
+    dummy.GetYaxis().SetTitleFont(43)
+    dummy.GetYaxis().SetTitleSize(32)
+    dummy.GetYaxis().SetLabelFont(43)
+    dummy.GetYaxis().SetLabelSize(28)
+
+    if angleDef == "theta":
+        leg = ROOT.TLegend(0.5, 0.9-0.04*(len(detector_groups)+1), 0.9, 0.9)
+    else:
+        leg = ROOT.TLegend(0.2, 0.9-0.04*(len(detector_groups)+1), 0.55, 0.9)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.03)
+    leg.SetMargin(0.2)
+    leg.SetHeader(args.title)
+
+    st = ROOT.THStack()
+    st.SetName("stack")
+    hists_to_write.append(nhits_barrel)
+    hists_to_write.append(nhits_endcap)
+
+    nhits_barrel.SetFillColor(ROOT.kRed)
+    nhits_barrel.SetLineColor(ROOT.kBlack)
+    nhits_barrel.SetLineWidth(1)
+    nhits_barrel.SetLineStyle(1)
+    st.Add(nhits_barrel)
+    leg.AddEntry(nhits_barrel, "Barrel/layers", "F")
+
+    nhits_endcap.SetFillColor(ROOT.kOrange)
+    nhits_endcap.SetLineColor(ROOT.kBlack)
+    nhits_endcap.SetLineWidth(1)
+    nhits_endcap.SetLineStyle(1)
+    st.Add(nhits_endcap)
+    leg.AddEntry(nhits_endcap, "Endcap/disks", "F")
+
+
+    dummy.GetYaxis().SetRangeUser(0, st.GetStack().Last().GetMaximum()+3)
+    dummy.Draw("HIST")
+    st.Draw("SAME HIST")
+    leg.Draw()
+    ROOT.gPad.SetTicks()
+    ROOT.gPad.RedrawAxis()
+    c.SaveAs(f"{args.outDir}/delphes_nhits.png")
+    c.SaveAs(f"{args.outDir}/delphes_nhits.pdf")
+
+
+
 
     fOut = ROOT.TFile(f"{args.outDir}/delphes_x0.root", "RECREATE")
     for h in hists_to_write:
@@ -176,6 +254,9 @@ if __name__ == '__main__':
         detector_groups = OrderedDict()
         detector_groups['Beampipe'] = ['PIPE']
         detector_groups['Vertex'] = ['VTXLOW', 'VTXHIGH', 'VTXDSK']
+        detector_groups['VTXLOW'] = ['VTXLOW',]
+        detector_groups['VTXHIGH'] = ['VTXHIGH']
+        detector_groups['VTXDSK'] = ['VTXDSK']
         #detector_groups['Drift chamber'] = ['DCHCANI', 'DCH', 'DCHWALL', 'DCHCANO']
         #detector_groups['Silicon wrapper'] = ['FSILWRP', 'BSILWRP']
         #detector_groups['Preshower'] = ['BPRESH', 'FPRESH']
