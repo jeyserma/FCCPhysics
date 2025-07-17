@@ -43,9 +43,14 @@ def radius_idx(hit, layer_radii):
     Output: r, int representing polar radius in mm.
     """
     true_radius = hit.rho()
+    #print(true_radius)
     for i,r in enumerate(layer_radii):
-        if abs(true_radius-r) < 4:
+        if true_radius > r[0] and true_radius < r[1]:
+        #if abs(true_radius-r) < 4:
             return i
+        elif true_radius > 16:
+            return -1
+    print("not found", true_radius)
     raise ValueError(f"Not close enough to any of the layers {true_radius}")
 
 
@@ -73,11 +78,12 @@ def plot_hist(h, outname, title, xMin=-1, xMax=-1, yMin=-1, yMax=-1, xLabel="", 
 
 
 
-def plot_2dhist(h, outname, title, xMin=-1, xMax=-1, yMin=-1, yMax=-1, xLabel="", yLabel="Events", logY=False):
+def plot_2dhist(h, outname, title, xMin=-1, xMax=-1, yMin=-1, yMax=-1, xLabel="", yLabel="Events", logY=False, scale=1.):
     fig = plt.figure()
     ax = fig.subplots()
 
-    hep.hist2dplot(h, label="", ax=ax)
+    h.Scale(scale)
+    hep.hist2dplot(h, label="", ax=ax, cmin = 1e-6)
 
     ax.set_title(title)
     ax.set_xlabel(xLabel)
