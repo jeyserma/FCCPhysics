@@ -53,14 +53,14 @@ Vec_PixelDigi DigitizerSimHitBarrel(const BarrelGeometry& geo, Vec_f hits_x, Vec
 Vec_f getOccupancyBarrel(const BarrelGeometry& geo, Vec_PixelDigi digis, int nR, int nC) {
     // nR and nC are the window sizes in rows() and cols()
 
-    int n_row_pixels_per_window = geo.c * 1000 / nR / geo.pX; // number of pixel sides per row
-    int n_col_pixels_per_window = geo.z * 1000 * 2.0 / nC / geo.pY; // number of pixel sides per col
+    int n_row_pixels_per_window = std::ceil(geo.c * 1000 / nR / geo.pX); // number of pixel sides per row
+    int n_col_pixels_per_window = std::ceil(geo.z * 1000 * 2.0 / nC / geo.pY); // number of pixel sides per col
     int n_col_pixels_half_z = geo.z * 1000 / geo.pY; // number of pixels in half z side
 
     Vec_i hitmap = Vec_i(nR*nC, 0);
     for(const auto& b : digis) {
-        int r = b.row/n_row_pixels_per_window;
-        int c = (b.col + n_col_pixels_half_z)/n_col_pixels_per_window; // avoid negative cols, add n_col_pixels_half_z, so c>=0
+        int r = std::floor(b.row/n_row_pixels_per_window);
+        int c = std::floor((b.col + n_col_pixels_half_z)/n_col_pixels_per_window); // avoid negative cols, add n_col_pixels_half_z, so c>=0
         hitmap[r*nC+c] += 1;
     }
 
