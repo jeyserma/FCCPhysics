@@ -29,8 +29,8 @@ bins_z = (int(max_z/2), -max_z, max_z)
 bins_layer = (10, 0, 10)
 
 bins_occupancy = (100, 0, 100)
-bins_occupancy_avg = (1000, 0, 100)
-
+bins_occupancy_avg = (100000, 0, 100)
+bins_occupancy_tot = (5000, 0, 5000)
 
 
 def analysis(input_files, output_file):
@@ -66,12 +66,15 @@ def analysis(input_files, output_file):
 
     df = df.Define("geo_layer1", "BarrelGeometry(14.f, 109.f, 25.f, 25.f)") # radius (mm), z-extent (mm), pixel pitch x (um), pixel pitch y (um)
     df = df.Define("digis_layer1", "DigitizerSimHitBarrel(geo_layer1, hits_sel_x, hits_sel_y, hits_sel_z, hits_sel_edep, -1)")
-    df = df.Define("digis_layer1_occ", "getOccupancyBarrel(geo_layer1, digis_layer1, 4, 4)")
+    df = df.Define("digis_layer1_occ", "getOccupancyBarrel(geo_layer1, digis_layer1, 250, 250, true)") # nRows, nCols
+    #df = df.Define("digis_layer1_occ", "getOccupancyBarrel(geo_layer1, digis_layer1, 4, 4, false)") # nRows, nCols
     df = df.Define("digis_occupancy_max", "digis_layer1_occ[0]")
     df = df.Define("digis_occupancy_avg", "digis_layer1_occ[1]")
+    df = df.Define("digis_occupancy_tot", "digis_layer1_occ[2]")
 
     hists.append(df.Histo1D(("digis_occupancy_avg", "", *bins_occupancy_avg), "digis_occupancy_avg"))
     hists.append(df.Histo1D(("digis_occupancy_max", "", *bins_occupancy), "digis_occupancy_max"))
+    hists.append(df.Histo1D(("digis_occupancy_tot", "", *bins_occupancy_tot), "digis_occupancy_tot"))
 
     fout = ROOT.TFile(output_file, "RECREATE")
     for h in hists:

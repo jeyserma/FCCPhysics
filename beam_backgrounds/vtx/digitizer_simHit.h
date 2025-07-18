@@ -50,11 +50,17 @@ Vec_PixelDigi DigitizerSimHitBarrel(const BarrelGeometry& geo, Vec_f hits_x, Vec
 }
 
 
-Vec_f getOccupancyBarrel(const BarrelGeometry& geo, Vec_PixelDigi digis, int nR, int nC) {
-    // nR and nC are the window sizes in rows() and cols()
+Vec_f getOccupancyBarrel(const BarrelGeometry& geo, Vec_PixelDigi digis, int nR, int nC, bool npx=false) {
 
-    int n_row_pixels_per_window = std::ceil(geo.c * 1000 / nR / geo.pX); // number of pixel sides per row
-    int n_col_pixels_per_window = std::ceil(geo.z * 1000 * 2.0 / nC / geo.pY); // number of pixel sides per col
+    int n_row_pixels_per_window, n_col_pixels_per_window;
+    if(npx) { // nR and nC represent the amount of pixels to form the window, must be even
+        n_row_pixels_per_window = nR;
+        n_col_pixels_per_window = nC;
+    }
+    else { // nR and nC represent the division of the entire (r*phi, z) plane to form the window
+        n_row_pixels_per_window = std::ceil(geo.c * 1000 / nR / geo.pX); // number of pixel sides per row
+        n_col_pixels_per_window = std::ceil(geo.z * 1000 * 2.0 / nC / geo.pY); // number of pixel sides per col
+    }
     int n_col_pixels_half_z = geo.z * 1000 / geo.pY; // number of pixels in half z side
 
     Vec_i hitmap = Vec_i(nR*nC, 0);
@@ -66,10 +72,12 @@ Vec_f getOccupancyBarrel(const BarrelGeometry& geo, Vec_PixelDigi digis, int nR,
 
     int maxCount = *std::max_element(hitmap.begin(), hitmap.end());
     float avgCount = std::reduce(hitmap.begin(), hitmap.end())*1.0 / hitmap.size();
+    int totCount = digis.size();
 
     Vec_f ret;
     ret.push_back(maxCount);
     ret.push_back(avgCount);
+    ret.push_back(totCount);
     return ret;
 }
 
