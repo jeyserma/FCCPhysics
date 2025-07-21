@@ -1,0 +1,1135 @@
+-=-=-=- NOTA BENE -=-=-=-
+NON USARE PARENTESI TONDE NELLE DEFINIZIONI
+O SI INCAZZA E DA ERRORE IN LETTURA
+(SENZA SPIEGARTELO OVVIAMENTE)
+AH, E FINISCI SEMPRE CON UNA RIGA VUOTA EH!!! COME MADX
+-- NEW 4IP PARAMETERS --
+
+$ACCELERATOR:: FCCee_Z_CDR
+{energy=45.6;
+particles=17;
+beta_x=150;
+beta_y=0.8;
+sigma_z=12100;
+dist_z.1=0;dist_z.2=0;
+sigma_x=6360;
+sigma_y=28.3;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_WW_CDR
+{energy=80;
+particles=15.;
+beta_x=200;
+beta_y=1;
+sigma_z=6000;
+dist_z.1=0;dist_z.2=0;
+sigma_x=13000;
+sigma_y=41;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_ZH_CDR
+{energy=120;
+particles=18.;
+beta_x=300;
+beta_y=1.0;
+sigma_z=5300;
+dist_z.1=0;dist_z.2=0;
+sigma_x=13700;
+sigma_y=36;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR::FCCee_Top_CDR
+{energy=182.5;
+which_espread=3;
+particles=23;
+beta_x=1000.0;
+beta_y=1.6;
+offset_x=0.;
+offset_y=0.;
+sigma_x=38210.;
+sigma_y=68.;
+sigma_z=2540.;
+n_b=1;
+f_rep=1;
+charge_sign=-1;
+angle_x=-0.015;}
+
+$ACCELERATOR:: FCCee_Z_4IP_04aug22
+{energy=45.6;
+particles=24.3;
+beta_x=100;
+beta_y=0.8;
+sigma_z=15400;
+dist_z.1=0;dist_z.2=0;
+sigma_x=8426;
+sigma_y=33.7;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_WW_4IP_04aug22
+{energy=80;
+particles=29.1;
+beta_x=200;
+beta_y=1;
+sigma_z=8010;
+dist_z.1=0;dist_z.2=0;
+sigma_x=20785;
+sigma_y=66;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_ZH_4IP_04aug22
+{energy=120;
+particles=20.4;
+beta_x=300;
+beta_y=1.0;
+sigma_z=6000;
+dist_z.1=0;dist_z.2=0;
+sigma_x=13856;
+sigma_y=36;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR::FCCee_Top_4IP_04aug22
+{energy=182.5;
+which_espread=3;
+particles=23.7;
+beta_x=1000.0;
+beta_y=1.6;
+offset_x=0.;
+offset_y=0.;
+sigma_x=38601.;
+sigma_y=69.;
+sigma_z=2800.;
+n_b=1;
+f_rep=1;
+charge_sign=-1;
+angle_x=-0.015;}
+
+$ACCELERATOR:: FCCee_Z_4IP_04may23
+{energy=45.6;
+particles=15.1;
+beta_x=110;
+beta_y=0.7;
+sigma_z=12700;
+dist_z.1=0;dist_z.2=0;
+sigma_x=8837.;
+sigma_y=31.;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_Z_4IP_04may23_noXing
+{energy=45.6;
+particles=15.1;
+beta_x=110;
+beta_y=0.7;
+sigma_z=12700;
+dist_z.1=0;dist_z.2=0;
+sigma_x=8837.;
+sigma_y=31.;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=0;
+charge_sign=-1;}
+
+
+$ACCELERATOR:: FCCee_WW_4IP_04may23
+{energy=80;
+particles=14.7;
+beta_x=200;
+beta_y=1;
+sigma_z=5520;
+dist_z.1=0;dist_z.2=0;
+sigma_x=20832.;
+sigma_y=47.;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR:: FCCee_ZH_4IP_04may23
+{energy=120;
+particles=11.5;
+beta_x=240;
+beta_y=1.0;
+sigma_z=4700.;
+dist_z.1=0;dist_z.2=0;
+sigma_x=13054.;
+sigma_y=37.;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;}
+
+$ACCELERATOR::FCCee_Top_4IP_04may23
+{energy=182.5;
+which_espread=3;
+particles=15.5;
+beta_x=1000.0;
+beta_y=1.6;
+offset_x=0.;
+offset_y=0.;
+sigma_x=39875.;
+sigma_y=50.;
+sigma_z=2170.;
+n_b=1;
+f_rep=1;
+charge_sign=-1;
+angle_x=-0.015;}
+
+
+####################################################
+
+!!!!!
+n_z dispari!!!
+dump_step = n_z - 1
+(perche fa 2n-1 steps)
+
+$PARAMETERS::FCCee_Top
+{
+n_x=128 ;
+n_y=128 ;
+n_z=201 ;
+n_t=1 ;
+cut_x=12*sigma_x.1;
+cut_y=10*sigma_y.1;
+cut_z=3*sigma_z.1 ;
+do_espread=1;
+n_m=100000 ;
+force_symmetric=0;
+integration_method=2;
+rndm_load = 1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+do_coherent = 0;
+do_trident = 0;
+do_compt = 0;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+load_beam=0;
+do_dump=3;
+dump_step=n_z-1;
+}
+
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z512
+{
+n_x=512 ;
+n_y=512 ;
+n_z=513 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z256
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_Z128
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+
+
+
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z256_noTracking
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z256_noTracking_halfWindow
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=75*sigma_x.1;
+cut_y=30.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z256_halfWindow
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=75*sigma_x.1;
+cut_y=30.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z128_noTracking
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z128_noTracking_halfWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=75*sigma_x.1;
+cut_y=30.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z128_noTracking_reducedWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=20.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_Z128_noTracking_halfYWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=20.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_Z128_noTracking_halfZWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_Z128_noTracking_doubleZWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z128_halfWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=75*sigma_x.1;
+cut_y=30.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z128_reducedWindow
+{
+n_x=128 ;
+n_y=128 ;
+n_z=129 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=20.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+
+
+$PARAMETERS:: FCCee_Z64
+{
+n_x=64 ;
+n_y=64 ;
+n_z=65 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+$PARAMETERS:: FCCee_Z32
+{
+n_x=32 ;
+n_y=32 ;
+n_z=33 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+# 
+$PARAMETERS:: FCCee_Z32_noTracking
+{
+n_x=32 ;
+n_y=32 ;
+n_z=33 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+
+!! was 320 before, but only works with FFTW enabled
+$PARAMETERS:: FCCee_Z_TEST
+{
+n_x=64 ;
+n_y=64 ;
+n_z=65 ;
+n_t=1 ;
+cut_x=150*sigma_x.1;
+cut_y=60.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=0 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=0;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_WW
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=70*sigma_x.1;
+cut_y=36*sigma_y.1;
+cut_z=3.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=3;
+dump_step=n_z-1;
+}
+
+$PARAMETERS:: FCCee_ZH
+{
+n_x=256 ;
+n_y=256 ;
+n_z=257 ;
+n_t=1 ;
+cut_x=50*sigma_x.1;
+cut_y=32*sigma_y.1;
+cut_z=3.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 1;
+track_pairs=1;
+store_pairs=2;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=7 ;
+beam_size = 1;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=0 ;
+num_lumi=200000 ;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=3;
+dump_step=n_z-1;
+}

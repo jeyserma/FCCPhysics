@@ -1,0 +1,102 @@
+
+GUINEA::run() guineapig.cpp
+
+
+
+
+SAVE PAIRS:
+
+
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/particlesCPP.h#L407
+
+Definition of pair particle:
+
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/particlesCPP.h
+
+velocity z --> only defined for pairs
+
+
+
+Stepping of fields/tracking not done in Z, only in X,Y
+
+
+
+GUINEA::make_step()
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/guineapigCPP.cc#L672
+
+GRID::photon_lumi_2()
+
+
+Collide photons in a cell
+GRID::collide_gg_XX()
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/gridCPP.cc#L1619
+
+
+
+BW pair created here:
+make_pair_bw(()
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/pairsCPP.cc#L140
+--> creates electrons and positrons 1 and 2
+--> book_keeping(mesh, index_of_process, e1,px1,py1,pz1, e2, px2,py2,pz2, sigmap,cellx, celly,min_z, switches, rndm_generator );
+
+    void book_keeping(const MESH& mesh, int index_of_process, double e1,double px1,double py1,double pz1,double e2,double px2,double py2,double pz2, double wgt,int cellx, int celly,float min_z,SWITCHES& switches,RNDM& rndm_generator )
+        new_pair(mesh, cellx, celly,min_z,index_of_process, (float)e1,(float)px1,(float)py1,(float)pz1, switches.get_pair_ratio(), switches.get_track_pairs(), switches.get_store_pairs(), rndm_generator);
+        new_pair(mesh, cellx, celly,min_z, index_of_process, (float)e2,(float)px2,(float)py2,(float)pz2, switches.get_pair_ratio(), switches.get_track_pairs(), switches.get_store_pairs(), rndm_generator);
+        https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/pairsCPP.h#L219
+
+        Two particles are created (electron, positron)
+        
+        
+        void PAIR_BEAM::new_pair(const MESH& mesh, int cellx, int celly,float min_z, int index_of_process, float energy,float px,float py,float pz, float ratio, int tracking, int saving, RNDM& rndm_generator )
+        https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/pairsCPP.cc#L53
+        
+        Position xx,yy,zz is randomized in each cell
+        PAIR_PARTICLE pair_temp = PAIR_PARTICLE(count_pairs_, index_of_process,xx,yy,zz,vxx,vyy,vzz, energy);
+        
+        It is pushed to reserve_ --> contains all the pairs
+        std::list<PAIR_PARTICLE> reserve_; // reserve is part of the secondaries_
+        reserve_.push_back(pair_temp);  
+
+
+
+
+
+Tracking of pairs is also called in GUINEA::make_step()
+    https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/guineapigCPP.cc#L672
+
+    grid_.move_pairs(secondaries_)
+    https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/gridCPP.cc#L1158
+
+        secondaries_.get_pairs(i_slice); = inline std::vector<PAIR_PARTICLE>& get_pairs(int slice) { return active_pairs_[slice];}
+
+
+    Calls step_pair_1() for each particle
+    https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/gridCPP.cc#L2230
+    
+    pair.advancePosition(step);
+
+
+    Non-active pairs: 
+    move_unactive_pairs()
+    https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/pairsCPP.cc#L42
+    
+    https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/guineapigCPP.cc#L850
+
+
+PAIR_BEAM secondaries_;
+secondaries_ --> part of guineapigCPP.cc
+
+https://gitlab.cern.ch/clic-software/guinea-pig/-/blob/master/src/pairsCPP.h#L92
+class  PAIR_BEAM : public ABSTRACT_IO_CLASS
+{
+  
+  std::list<PAIR_PARTICLE> reserve_;
+  std::vector< std::vector<PAIR_PARTICLE> > active_pairs_;
+  std::vector<PAIR_PARTICLE> pairs0_;
+
+
+
+save_pairs_on_file  --> the reserved_ are saved
+
+
+
