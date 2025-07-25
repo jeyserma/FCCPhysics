@@ -266,7 +266,7 @@ echo "Key4Hep sourcing successful"
 echo "Start ddsim"
 SECONDS=0
 #ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root --inputFiles output_${{seed}}.pairs --numberOfEvents -1
-ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root {self.ddsim_args}
+ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root {self.ddsim_args} --crossingAngleBoost 0.015
 #ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root {self.ddsim_args}
 duration=$SECONDS
 
