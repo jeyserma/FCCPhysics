@@ -149,9 +149,10 @@ class DDSimProducer:
             for n, f in enumerate(input_files):
                 if n >= args.nJobs:
                     break
-                seed = os.path.basename(f).replace("output_", "").replace("output0_", "").replace(".pairs", "")
+                #seed = os.path.basename(f).replace("output_", "").replace("output0_", "").replace(".pairs", "")
+                seed = os.path.basename(f).replace(".pairs", "") # remove extension
                 seeds.append(seed)
-            self.ddsim_args = f"--inputFiles output_${{seed}}.pairs --numberOfEvents -1"
+            self.ddsim_args = f"--inputFiles ${{seed}}.pairs --numberOfEvents -1"
 
         else:
             logger.error(f"Please provide input guinea pig directory or a gun file")
@@ -207,7 +208,7 @@ voms-proxy-info -all
 #voms-proxy-info -all -file x509
 
 xrdcp --version
-xrdcp -d 3 output_${{seed}}_sim.root root://submit50.mit.edu/{out_dir_xrd}/output_${{seed}}_sim.root
+xrdcp -d 3 ${{seed}}_sim.root root://submit50.mit.edu/{out_dir_xrd}/${{seed}}_sim.root
 rc=$?
 if [ $rc -ne 0 ]; then
     echo "xrdcp failed with exit code $rc" >&2
@@ -266,11 +267,11 @@ echo "Key4Hep sourcing successful"
 echo "Start ddsim"
 SECONDS=0
 #ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root --inputFiles output_${{seed}}.pairs --numberOfEvents -1
-ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root {self.ddsim_args} --crossingAngleBoost 0.015
+ddsim --compactFile {compactFile} --outputFile ${{seed}}_sim.root {self.ddsim_args} --crossingAngleBoost 0.015
 #ddsim --compactFile {compactFile} --outputFile output_${{seed}}_sim.root {self.ddsim_args}
 duration=$SECONDS
 
-#echo "lol" > output_${{seed}}_sim.root
+#echo "lol" > ${{seed}}_sim.root
 
 # check ddsim exit code
 # fail job in case ddsim isn't properly executed --> try again via max_retries
@@ -282,8 +283,8 @@ if [ $rc -ne 0 ]; then
 fi
 
 # check if output file exists
-if [ ! -f output_${{seed}}_sim.root ]; then
-    echo "ddsim did not produce output_${{seed}}_sim.root" >&2
+if [ ! -f ${{seed}}_sim.root ]; then
+    echo "ddsim did not produce ${{seed}}_sim.root" >&2
     exit 1
 fi
 
@@ -324,9 +325,9 @@ echo "Duration: $(($duration))"
         fOut.write(f'when_to_transfer_output = ON_EXIT\n')
         if gp:
             if self.geometry_file:
-                fOut.write(f'transfer_input_files = {self.gp_dir}/output_$(SEED).pairs,{geometry_sandbox}\n')
+                fOut.write(f'transfer_input_files = {self.gp_dir}/$(SEED).pairs,{geometry_sandbox}\n')
             else:
-                fOut.write(f'transfer_input_files = {self.gp_dir}/output_$(SEED).pairs\n')
+                fOut.write(f'transfer_input_files = {self.gp_dir}/$(SEED).pairs\n')
         else:
             if self.geometry_file:
                 fOut.write(f'transfer_input_files = {geometry_sandbox}\n')
@@ -334,7 +335,7 @@ echo "Duration: $(($duration))"
         if args.xrootd:
             fOut.write(f'transfer_output_files = ""\n') # explicit no transfer files back
         else:
-            fOut.write(f'transfer_output_files = output_$(SEED)_sim.root\n') # done by xrdcp
+            fOut.write(f'transfer_output_files = $(SEED)_sim.root\n') # done by xrdcp
 
         fOut.write(f'on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
         fOut.write(f'max_retries    = 150\n')
