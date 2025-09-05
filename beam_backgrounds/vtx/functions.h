@@ -1,6 +1,7 @@
 
 #include <math.h>
 #include "edm4hep/SimTrackerHitData.h"
+#include "edm4hep/MCParticleData.h"
 
 // definitions here: https://github.com/key4hep/EDM4hep/blob/main/edm4hep.yaml
 
@@ -14,6 +15,15 @@ using Vec_ui = ROOT::VecOps::RVec<unsigned int>;
 
 // detector-specific collections
 using Vec_SimTrackerHitData = ROOT::VecOps::RVec<edm4hep::SimTrackerHitData>;
+using Vec_MCParticleData = ROOT::VecOps::RVec<edm4hep::MCParticleData>;
+
+Vec_MCParticleData getMCParticle(Vec_SimTrackerHitData in, Vec_MCParticleData mc, Vec_i idx) {
+    Vec_MCParticleData ret;
+    for(int i=0; i<in.size(); i++) {
+        ret.push_back(mc[idx[i]]);
+    }
+    return ret;
+}
 
 
 
@@ -99,7 +109,7 @@ Vec_b isProducedBySecondary(Vec_SimTrackerHitData in) {
 Vec_f getEnergyDeposition(Vec_SimTrackerHitData in) {
     Vec_f ret;
     for(auto & hit: in) {
-        ret.push_back(hit.EDep);
+        ret.push_back(hit.eDep);
     }
     return ret;
 }
@@ -111,4 +121,65 @@ Vec_i getCellID(Vec_SimTrackerHitData in) {
     }
     return ret;
 }
+
+
+Vec_f get_theta(Vec_MCParticleData in, bool deg=false) {
+    Vec_f ret;
+    for(auto & p: in) {
+        TLorentzVector tlv;
+        tlv.SetXYZM(p.momentum.x, p.momentum.y, p.momentum.z, p.mass);
+        float theta = tlv.Theta();
+        if(deg) theta = theta * 180 / M_PI;
+        ret.push_back(theta);
+    }
+    return ret;
+}
+
+
+Vec_f get_p(Vec_MCParticleData in) {
+    Vec_f ret;
+    for(auto & p: in) {
+        TLorentzVector tlv;
+        tlv.SetXYZM(p.momentum.x, p.momentum.y, p.momentum.z, p.mass);
+        ret.push_back(tlv.P());
+    }
+    return ret;
+}
+
+Vec_f get_pt(Vec_MCParticleData in) {
+    Vec_f ret;
+    for(auto & p: in) {
+        TLorentzVector tlv;
+        tlv.SetXYZM(p.momentum.x, p.momentum.y, p.momentum.z, p.mass);
+        ret.push_back(tlv.Pt());
+    }
+    return ret;
+}
+
+Vec_i get_pdgid(Vec_MCParticleData in, bool abs=false) {
+    Vec_i ret;
+    for(auto & p: in) {
+        if(abs) ret.push_back(std::abs(p.PDG));
+        else ret.push_back(p.PDG);
+    }
+    return ret;
+}
+
+Vec_i get_generatorStatus(Vec_MCParticleData in) {
+    Vec_i ret;
+    for(auto & p: in) {
+        ret.push_back(p.generatorStatus);
+    }
+    return ret;
+}
+
+Vec_f tf_theta(Vec_f in) {
+    Vec_f ret;
+    for(auto & t: in) {
+        if(t > M_PI/2.) ret.push_back(M_PI - t);
+        else ret.push_back(t);
+    }
+    return ret;
+}
+
 

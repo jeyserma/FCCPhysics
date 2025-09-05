@@ -19,7 +19,7 @@ args = parser.parse_args()
 # function of phi and theta
 ##########################################################################################
 
-folder = "/ceph/submit/data/group/fcc/ee/detector/VTXStudiesFullSim/CLD_o2_v05/FCCee_Z_4IP_04may23_FCCee_Z/"
+folder = "/ceph/submit/data/group/fcc/ee/detector/VTXStudiesFullSim/CLD_o2_v05/guineaPig_andrea_June2024_v23/"
 files = glob.glob(f"{folder}/*.root")
 
 

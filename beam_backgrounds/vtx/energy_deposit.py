@@ -18,7 +18,7 @@ args = parser.parse_args()
 # this file is for plotting the number of hits over energy deposited in each layer
 ##########################################################################################
 
-folder = "/ceph/submit/data/group/fcc/ee/detector/VTXStudiesFullSim/CLD_o2_v05/FCCee_Z_4IP_04may23_FCCee_Z/"
+folder = "/ceph/submit/data/group/fcc/ee/detector/VTXStudiesFullSim/CLD_o2_v05/guineaPig_andrea_June2024_v23/"
 files = glob.glob(f"{folder}/*.root")
 
 
