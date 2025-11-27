@@ -303,7 +303,7 @@ def make_pseudodata(procs, target="bb", variation=1.0):
 if __name__ == "__main__":
 
     ecm = args.ecm
-    outDir = "output/h_zh/combine/"
+    outDir = f"output/h_zh/combine/ecm{ecm}/"
     plot_dir = "/home/submit/jaeyserm/public_html/fccee/h_zh/combine_smoothing/"
     sigma = 1
     bkg_unc = 1.01
@@ -392,30 +392,20 @@ if __name__ == "__main__":
 
         if cat == "ee" or cat == "mumu":
             #procs_cfg["ZH"] = [f'wzp6_ee_{x}H_H{y}_ecm240' for x in [cat] for y in h_decays]
-            
-            # NOMINAL
-            #inputDir = "output/h_zh_leptonic/histmaker/ecm240/mrec_100_150/"
-            #inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
-            #hName, rebin = f'{cat}_zll_recoil', 50 # recoil 0.5 GeV bins
 
             # WITH COS THETA MISS
             #inputDir = "output/h_zh_leptonic/histmaker/ecm240/WithCosThetaMiss/"
             #hName, rebin = f'{cat}_zll_recoil', 50 # recoil 0.5 GeV bins
-            
-
-            # WITHOUT COS THETA MISS
-            #inputDir = "output/h_zh_leptonic/histmaker/ecm240/mrec_100_150/"
-            #hName, rebin = f'{cat}_zll_recoil', 50 # recoil 0.5 GeV bins
 
             ## FIT MVA SCORE (100 bins)
-            inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
-            hName, rebin = f'{cat}_mva_score', 10 # MVA score 100 bins
+            #inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
+            #hName, rebin = f'{cat}_mva_score', 10 # MVA score 100 bins
 
             # FIT RECOIL
             #inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
             #hName, rebin = f'{cat}_zll_recoil', 50 # recoil 0.5 GeV bins
 
-            ## NOMINAL
+            ## NOMINAL 2D MVA
             inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
             hName, rebin = f'{cat}_recoil_m_mva', 1
 

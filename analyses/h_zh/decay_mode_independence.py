@@ -7,9 +7,9 @@ def run_fit(cats, target, pert, extraArgs):
     os.system(cmd)
 
     if '-' in cats:
-        fIn = ROOT.TFile("output/h_zh/combine/fit_output_combined.root") # combination
+        fIn = ROOT.TFile(f"output/h_zh/combine/ecm{ecm}/fit_output_combined.root") # combination
     else:
-        fIn = ROOT.TFile(f"output/h_zh/combine/fit_output_{cats}.root") # single category
+        fIn = ROOT.TFile(f"output/h_zh/combine/ecm{ecm}/fit_output_{cats}.root") # single category
     tree = fIn.Get("fitresults")
     tree.GetEntry(0)
     status = tree.status
@@ -21,13 +21,13 @@ def run_fit(cats, target, pert, extraArgs):
 
 if __name__ == "__main__":
 
-    ecm = 365 # 240 365
+    ecm = 240 # 240 365
     extraArgs = "--freezeBackgrounds"
     #extraArgs = "--floatBackgrounds"
     extraArgs = ""
     pert = 1.01
-    cats = "qq"
-    h_decays = ["bb", "cc", "gg", "ss", "mumu", "tautau", "ZZ", "WW", "Za", "aa", "inv"]
+    cats = "qq-mumu-ee"
+    h_decays = ["bb", "cc", "ss", "gg", "mumu", "tautau", "ZZ", "WW", "Za", "aa", "inv"]
 
     res = []
     for h_decay in h_decays:
@@ -40,10 +40,11 @@ if __name__ == "__main__":
         errstatus = res[i][0] = res[i][1]
         ZH_mu = res[i][2]
         ZH_mu_err = res[i][3]
+        #print(status, errstatus, ZH_mu, ZH_mu_err, pert)
         bias = 100.*(ZH_mu - pert)
 
         if status != 0 and errstatus != 0:
             print(f"{h_decay}\tERROR: status={status} errstatus={errstatus}")
         else:
-            print(f"{h_decay}\t{bias:.3f}")
+            print(f"{h_decay}\t{bias:.2f}")
 

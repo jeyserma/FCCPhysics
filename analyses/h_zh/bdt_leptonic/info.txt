@@ -1,0 +1,13 @@
+
+
+
+Original trainings from Ang:
+xgb_bdt_ee_240.root
+xgb_bdt_mumu_240.root
+xgb_bdt_ee_365.root
+xgb_bdt_mumu_365.root
+
+
+Updated training with slight change in event selection (enlarged recoil window):
+xgb_bdt_mumu_new_v0.root
+Negigible difference found, so keep the old trainings
