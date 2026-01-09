@@ -6,5 +6,5 @@ git clone https://gitlab.cern.ch/hbu/bbbrem.git
 cd bbbrem
 cmake .
 make
-
+cd ../
 
