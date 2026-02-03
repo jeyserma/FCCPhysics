@@ -43,9 +43,9 @@ def getHist(hName, procs, rebin=1):
     #hist.Scale(3./10.8 * 1.05/1.39)
     return hist
 
-def makeCutFlow(hName="cutFlow", cuts=[], labels=[], sig_scale=1.0, yMin=1e6, yMax=1e10):
+def makeCutFlow(hName="cutFlow", cuts=[], labels=[], sig_scales=[], yMin=1e6, yMax=1e10):
 
-    leg = ROOT.TLegend(.55, 0.99-(len(procs))*0.06, .99, .90)
+    leg = ROOT.TLegend(.5, 0.99-(len(procs))*0.06, .99, .90)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
     leg.SetTextSize(0.03)
@@ -53,41 +53,49 @@ def makeCutFlow(hName="cutFlow", cuts=[], labels=[], sig_scale=1.0, yMin=1e6, yM
 
     hists_yields = []
     significances = []
-    h_sig = getHist(hName, procs_cfg[procs[0]])
 
-    hists_yields.append(copy.deepcopy(h_sig))
-    h_sig.Scale(sig_scale)
-    h_sig.SetLineColor(procs_colors[procs[0]])
-    h_sig.SetLineWidth(4)
-    h_sig.SetLineStyle(1)
-    if sig_scale != 1:
-        leg.AddEntry(h_sig, f"{procs_labels[procs[0]]} (#times {int(sig_scale)})", "L")
-    else:
-        leg.AddEntry(h_sig, procs_labels[procs[0]], "L")
 
+
+
+
+    sigs = []
     st = ROOT.THStack()
     st.SetName("stack")
     h_bkg_tot = None
-    for i,bkg in enumerate(procs[1:]):
-        h_bkg = getHist(hName, procs_cfg[bkg])
+    for i,proc in enumerate(procs):
+        isSig = False
+        if "SIGNAL:" in proc:
+            isSig = True
+            proc = proc.replace("SIGNAL:", "")
+        h = getHist(hName, procs_cfg[proc])
+        hists_yields.append(h)
+        if isSig:
+            h.SetLineColor(procs_colors[proc])
+            h.SetLineWidth(3)
+            h.SetLineStyle(1)
+            h.Scale(sig_scales[i])
+            if sig_scales[i] != 1:
+                leg.AddEntry(h, f"{procs_labels[proc]} (#times {int(sig_scales[i])})", "L")
+            else:
+                leg.AddEntry(h, procs_labels[proc], "L")
 
-        if h_bkg_tot == None: h_bkg_tot = h_bkg.Clone("h_bkg_tot")
-        else: h_bkg_tot.Add(h_bkg)
-        
-        h_bkg.SetFillColor(procs_colors[bkg])
-        h_bkg.SetLineColor(ROOT.kBlack)
-        h_bkg.SetLineWidth(1)
-        h_bkg.SetLineStyle(1)
-
-        leg.AddEntry(h_bkg, procs_labels[bkg], "F")
-        st.Add(h_bkg)
-        hists_yields.append(h_bkg)
+            sigs.append(h)
+        else:
+            if h_bkg_tot == None: h_bkg_tot = h.Clone("h_bkg_tot")
+            else: h_bkg_tot.Add(h)
+            h.SetFillColor(procs_colors[proc])
+            h.SetLineColor(ROOT.kBlack)
+            h.SetLineWidth(1)
+            h.SetLineStyle(1)
+            leg.AddEntry(h, procs_labels[proc], "F")
+            st.Add(h)
+            
 
     h_bkg_tot.SetLineColor(ROOT.kBlack)
     h_bkg_tot.SetLineWidth(2)
 
     for i,cut in enumerate(cuts):
-        nsig = h_sig.GetBinContent(i+1) / sig_scale ## undo scaling
+        nsig = sigs[0].GetBinContent(i+1) / sig_scales[0] ## undo scaling
         nbkg = 0
         for j,histProc in enumerate(hists_yields):
             nbkg = nbkg + histProc.GetBinContent(i+1)
@@ -131,7 +139,8 @@ def makeCutFlow(hName="cutFlow", cuts=[], labels=[], sig_scale=1.0, yMin=1e6, yM
 
     st.Draw("SAME HIST")
     h_bkg_tot.Draw("SAME HIST")
-    h_sig.Draw("SAME HIST")
+    for h_sig in sigs:
+        h_sig.Draw("SAME HIST")
     leg.Draw("SAME")
 
     plotter.aux()
@@ -553,6 +562,7 @@ def makePlot(hName, outName="", xMin=0, xMax=100, yMin=1, yMax=1e5, xLabel="xlab
     leg.SetTextSize(0.03)
     leg.SetMargin(0.2)
 
+    '''
     h_sig = getHist(hName, procs_cfg[procs[0]])
     h_sig.SetLineColor(procs_colors[procs[0]])
     h_sig.SetLineWidth(3)
@@ -562,28 +572,39 @@ def makePlot(hName, outName="", xMin=0, xMax=100, yMin=1, yMax=1e5, xLabel="xlab
         leg.AddEntry(h_sig, f"{procs_labels[procs[0]]} (#times {int(sig_scale)})", "L")
     else:
         leg.AddEntry(h_sig, procs_labels[procs[0]], "L")
-
+    '''
+    sigs = []
     st = ROOT.THStack()
     st.SetName("stack")
     h_bkg_tot = None
-    for i,bkg in enumerate(procs[1:]):
-        h_bkg = getHist(hName, procs_cfg[bkg])
+    for i,proc in enumerate(procs):
+        isSig = False
+        if "SIGNAL:" in proc:
+            isSig = True
+            proc = proc.replace("SIGNAL:", "")
+        h = getHist(hName, procs_cfg[proc])
 
-        if h_bkg_tot == None: h_bkg_tot = h_bkg.Clone("h_bkg_tot")
-        else: h_bkg_tot.Add(h_bkg)
-        
-        h_bkg.SetFillColor(procs_colors[bkg])
-        h_bkg.SetLineColor(ROOT.kBlack)
-        h_bkg.SetLineWidth(1)
-        h_bkg.SetLineStyle(1)
+        if isSig:
+            h.SetLineColor(procs_colors[proc])
+            h.SetLineWidth(3)
+            h.SetLineStyle(1)
+            leg.AddEntry(h, procs_labels[proc], "L")
+            sigs.append(h)
+        else:
+            if h_bkg_tot == None: h_bkg_tot = h.Clone("h_bkg_tot")
+            else: h_bkg_tot.Add(h)
+            h.SetFillColor(procs_colors[proc])
+            h.SetLineColor(ROOT.kBlack)
+            h.SetLineWidth(1)
+            h.SetLineStyle(1)
+            leg.AddEntry(h, procs_labels[proc], "F")
+            st.Add(h)
 
-        leg.AddEntry(h_bkg, procs_labels[bkg], "F")
-        st.Add(h_bkg)
 
 
     if yMax < 0:
         if logY:
-            yMax = math.ceil(max([h_bkg_tot.GetMaximum(), h_sig.GetMaximum()])*10000)/10.
+            yMax = math.ceil(max([h_bkg_tot.GetMaximum(), max([h.GetMaximum() for h in sigs])])*10000)/10.
         else:
             yMax = 1.4*max([h_bkg_tot.GetMaximum(), h_sig.GetMaximum()])
 
@@ -621,7 +642,8 @@ def makePlot(hName, outName="", xMin=0, xMax=100, yMin=1, yMax=1e5, xLabel="xlab
     h_bkg_tot.SetLineWidth(2)
     #hTot_err.Draw("E2 SAME")
     h_bkg_tot.Draw("HIST SAME")
-    h_sig.Draw("HIST SAME")
+    for h_sig in sigs:
+        h_sig.Draw("HIST SAME")
     leg.Draw("SAME")
     
     canvas.SetGrid()
@@ -709,16 +731,22 @@ def compareHists(procHists, outName, xMin=0, xMax=100, yMin=1, yMax=1e5, xLabel=
     canvas.Close()
 
 
-def significance(hName, xMin=-10000, xMax=10000, reverse=False):
+def significance(hName, xMin=-10000, xMax=10000, reverse=False, norm=False):
 
     h_sig = getHist(hName, procs_cfg[procs[0]])
-    sig_tot = h_sig.Integral()
+    
+  
 
     bkgs_procs = []
     for i,bkg in enumerate(procs[1:]):
         bkgs_procs.extend(procs_cfg[bkg])
 
     h_bkg = getHist(hName, bkgs_procs)
+    if norm:
+        h_sig.Scale(1./h_sig.Integral())
+        h_bkg.Scale(1./h_bkg.Integral())
+    
+    sig_tot = h_sig.Integral()
     x, y, l = [], [], []
 
     for i in range(1, h_sig.GetNbinsX()+1):
@@ -826,8 +854,8 @@ if __name__ == "__main__":
 
     procs_labels = {
         "ZHWW"      : "ZH(WW)",
-        "ZqqHWW"      : "Z(qq)H(WW)",
-        "ZqqHZZ"      : "Z(qq)H(ZZ)",
+        "ZqqHWW"      : "Z(qq)H(W(qq)W(qq))",
+        "ZqqHZZ"      : "Z(qq)H(Z(qq)Z(qq))",
         "ZHZZ"      : "ZHZZ",
         "WW"        : "WW",
         "ZZ"        : "ZZ",
@@ -838,25 +866,72 @@ if __name__ == "__main__":
     procs_colors = {
         "ZHWW"      : ROOT.TColor.GetColor("#e42536"),
         "ZqqHWW"      : ROOT.TColor.GetColor("#e42536"),
-        "ZqqHZZ"      : ROOT.TColor.GetColor("#e42536"),
+        "ZqqHZZ"      : ROOT.TColor.GetColor("#9c9ca1"),
         "WW"        : ROOT.TColor.GetColor("#f89c20"),
         "ZZ"        : ROOT.TColor.GetColor("#5790fc"),
         "Zgamma"    : ROOT.TColor.GetColor("#964a8b"),
-        "ZHZZ"      : ROOT.TColor.GetColor("#9c9ca1") #b9ac70
+        "ZHZZ"      : ROOT.TColor.GetColor("#9c9ca1") 
     }
 
 
 
-    inputDir = f"output/h_zz_ww/histmaker/ecm{ecm}/"
+    inputDir = f"output/h_zz_ww/histmaker/ecm{ecm}/stage2/"
+    inputDir = f"output/h_zz_ww/histmaker/ecm{ecm}/preSelPlots"
     outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/"
 
-    procs = ["ZqqHWW", "ZHZZ", "WW", "ZZ", "Zgamma"] # first must be signal
+    procs = ["SIGNAL:ZqqHWW", "SIGNAL:ZqqHZZ", "WW", "ZZ", "Zgamma"] # first must be signal
+    procs = [ "SIGNAL:ZqqHZZ","SIGNAL:ZqqHWW", "WW", "ZZ", "Zgamma"] # first must be signal
+    #procs = ["ZqqHZZ", "ZHWW", "WW", "ZZ", "Zgamma"] # first must be signal
 
-    cuts = ["cut0", "cut1", "cut2", "cut3", "cut4", "cut5", "cut6", "cut7", "cut8", "cut9", "cut10", "cut11"]
-    cut_labels = ["All events", "Signal hadronic", "Veto leptons", "missingEnergy_p", "visibleEnergy", "visibleMass", "6 jets", "d23", "", "", ""]
+
+    #procs = ["ZqqHWW", "ZqqHZZ"]
+    #significance("mva_score", 0, 1, norm=True)
+    #significance("mva_score", 0, 1, reverse=True, norm=True)
+    
+    #procs = ["ZqqHWW", "WW", "ZZ", "Zgamma"]
+    #significance("mva_score", 0, 1)
+    
+    #procs = ["ZqqHWW", "WW", "ZZ", "Zgamma"]
+    #significance("mva_score_ww", 0, 1)
+    #procs = ["ZqqHZZ", "WW", "ZZ", "Zgamma"]
+    #significance("mva_score_zz", 0, 1)
+    #quit()
+
+    if True:
+        inputDir = f"output/h_zz_ww/histmaker/ecm{ecm}/jet_pairing/"
+        outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/jet_pairing"
+        compareHists(['ZqqHWW:W1_WW_m', 'ZqqHZZ:Z1_ZZ_m'], "V1_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass Z/W 1 (GeV)", yLabel="Events", logY=False, rebin=1)
+        compareHists(['ZqqHWW:W2_WW_m', 'ZqqHZZ:Z2_ZZ_m'], "V2_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass Z/W 2 (GeV)", yLabel="Events", logY=False, rebin=1)
+        compareHists(['ZqqHWW:Z_WW_m', 'ZqqHZZ:Z_ZZ_m'], "Z_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass associated Z (GeV)", yLabel="Events", logY=False, rebin=1)
+        compareHists(['ZqqHWW:H_WW_m', 'ZqqHZZ:H_ZZ_m'], "H_m", xMin=100, xMax=150, yMin=0, yMax=-1, xLabel="Invariant mass Higgs (GeV)", yLabel="Events", logY=False, rebin=1)
+        compareHists(['ZqqHWW:chi2_WW', 'ZqqHZZ:chi2_ZZ'], "chi2", xMin=0, xMax=1000, yMin=0, yMax=-1, xLabel="chi2 min", yLabel="Events", logY=False, rebin=1)
+        quit()
+    
+    ### PRESELECTION PLOTS
+    inputDir = f"output/h_zz_ww/histmaker/ecm{ecm}/preSelPlots"
+    
+    makePlot("missingEnergy_nOne", xMin=0, xMax=120, yMin=1e-1, yMax=-1, xLabel="Missing momentum (GeV)", yLabel="Events", logY=True, rebin=1)
+    makePlot("visibleEnergy_nOne", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="Visible energy (GeV)", yLabel="Events", logY=True, rebin=1)
+    ##makePlot("visibleMass_nOne", xMin=120, xMax=250, yMin=1e-1, yMax=-1, xLabel="Visible mass (GeV)", yLabel="Events", logY=True, rebin=1)
+
+    makePlot("sq_dmerge_01", xMin=0, xMax=500, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{01}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_12", xMin=0, xMax=300, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{12}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_23", xMin=0, xMax=150, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{23}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_34", xMin=0, xMax=100, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{34}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_45", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{45}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_56", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{56}}", yLabel="Events", logY=True, rebin=1)
+    makePlot("sq_dmerge_67", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="#sqrt{d_{67}}", yLabel="Events", logY=True, rebin=1)
 
 
-    makeCutFlow("cutFlow", cuts, cut_labels, 100.)
+    cuts = ["cut0", "cut1", "cut2", "cut3", "cut4", "cut5", "cut6", "cut7", "cut8", "cut9"]
+    cut_labels = ["All events", "Signal hadronic", "Veto leptons", "p_{miss} < 20", "E_{vis} > 115", "6 jets", "#sqrt{d_{23}} > 50", "#sqrt{d_{34}} > 25", "#sqrt{d_{45}} > 15", "#sqrt{d_{56}} > 10"]
+
+
+
+    makeCutFlow("cutFlow", cuts, cut_labels, sig_scales=[100, 1000])
+
+    '''
+    
 
 
 
@@ -868,17 +943,20 @@ if __name__ == "__main__":
         
         significance("sq_dmerge_23", 0, 100)
         significance("sq_dmerge_34", 0, 100)
-        
+    
         
 
-    makePlot("visibleEnergy_nOne", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="visibleEnergy_nOne", yLabel="Events", logY=True, rebin=1)
-    makePlot("missingEnergy_nOne", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="missingEnergy_nOne", yLabel="Events", logY=True, rebin=1)
+
     makePlot("njets_nOne", xMin=0, xMax=15, yMin=1e-1, yMax=-1, xLabel="njets_nOne", yLabel="Events", logY=True, rebin=1)
 
     #makePlot("W1_m", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="W1_m", yLabel="Events", logY=True, rebin=1)
     #makePlot("W2_m", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="W2_m", yLabel="Events", logY=True, rebin=1)
     #makePlot("Z_m", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="Z_m", yLabel="Events", logY=True, rebin=1)
     #makePlot("H_m", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="H_m", yLabel="Events", logY=True, rebin=1)
+    '''
+
+    makePlot("mva_score", xMin=0, xMax=1, yMin=1e-1, yMax=-1, xLabel="mva_score", yLabel="MVA score", logY=True, rebin=1)
+
 
     # pairing
     outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/pairing_WW"
@@ -897,13 +975,27 @@ if __name__ == "__main__":
     makePlot("H_ZZ_m", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="H_ZZ_m", yLabel="Events", logY=True, rebin=1)
     makePlot("H_ZZ_p", xMin=0, xMax=250, yMin=1e-1, yMax=-1, xLabel="H_ZZ_p", yLabel="Events", logY=True, rebin=1)
 
-    outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/jet_pairing"
-    compareHists(['ZqqHWW:W1_WW_m', 'ZqqHZZ:Z1_ZZ_m'], "V1_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass Z/W 1 (GeV)", yLabel="Events", logY=False, rebin=1)
-    compareHists(['ZqqHWW:W2_WW_m', 'ZqqHZZ:Z2_ZZ_m'], "V2_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass Z/W 2 (GeV)", yLabel="Events", logY=False, rebin=1)
-    compareHists(['ZqqHWW:Z_WW_m', 'ZqqHZZ:Z_ZZ_m'], "Z_m", xMax=125, yMin=0, yMax=-1, xLabel="Invariant mass associated Z (GeV)", yLabel="Events", logY=False, rebin=1)
-    compareHists(['ZqqHWW:H_WW_m', 'ZqqHZZ:H_ZZ_m'], "H_m", xMin=100, xMax=150, yMin=0, yMax=-1, xLabel="Invariant mass Higgs (GeV)", yLabel="Events", logY=False, rebin=1)
 
+    '''
+    outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/jet_tagging"
+    compareHists(['ZqqHWW:sum_score_B_V1', 'ZqqHZZ:sum_score_B_V1'], "sum_score_B_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_B_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_B_V2', 'ZqqHZZ:sum_score_B_V2'], "sum_score_B_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_B_V2", yLabel="Events", logY=False, rebin=1)
+    
+    compareHists(['ZqqHWW:sum_score_C_V1', 'ZqqHZZ:sum_score_C_V1'], "sum_score_C_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_C_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_C_V2', 'ZqqHZZ:sum_score_C_V2'], "sum_score_C_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_C_V2", yLabel="Events", logY=False, rebin=1)
+    
+    compareHists(['ZqqHWW:sum_score_S_V1', 'ZqqHZZ:sum_score_S_V1'], "sum_score_S_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_S_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_S_V2', 'ZqqHZZ:sum_score_S_V2'], "sum_score_S_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_S_V2", yLabel="Events", logY=False, rebin=1)
+    
+    compareHists(['ZqqHWW:sum_score_U_V1', 'ZqqHZZ:sum_score_U_V1'], "sum_score_U_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_U_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_U_V2', 'ZqqHZZ:sum_score_U_V2'], "sum_score_U_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_U_V2", yLabel="Events", logY=False, rebin=1)
+    
+    compareHists(['ZqqHWW:sum_score_D_V1', 'ZqqHZZ:sum_score_D_V1'], "sum_score_D_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_D_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_D_V2', 'ZqqHZZ:sum_score_D_V2'], "sum_score_D_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_D_V2", yLabel="Events", logY=False, rebin=1)
 
+    compareHists(['ZqqHWW:sum_score_TAU_V1', 'ZqqHZZ:sum_score_TAU_V1'], "sum_score_TAU_V1", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_TAU_V1", yLabel="Events", logY=False, rebin=1)
+    compareHists(['ZqqHWW:sum_score_TAU_V2', 'ZqqHZZ:sum_score_TAU_V2'], "sum_score_TAU_V2", xMin=0, xMax=2, yMin=0, yMax=-1, xLabel="sum_score_TAU_V2", yLabel="Events", logY=False, rebin=1)
+    '''
 
     outDir = f"/home/submit/jaeyserm/public_html/fccee/h_zz_ww/plots_ecm{ecm}/dmerge"
     makePlot("dmerge_01", xMin=0, xMax=50000, yMin=1e-1, yMax=-1, xLabel="dmerge_01", yLabel="Events", logY=True, rebin=1)
@@ -914,13 +1006,7 @@ if __name__ == "__main__":
     makePlot("dmerge_56", xMin=0, xMax=50000, yMin=1e-1, yMax=-1, xLabel="dmerge_56", yLabel="Events", logY=True, rebin=1)
     makePlot("dmerge_67", xMin=0, xMax=50000, yMin=1e-1, yMax=-1, xLabel="dmerge_67", yLabel="Events", logY=True, rebin=1)
 
-    makePlot("sq_dmerge_01", xMin=0, xMax=500, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_01", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_12", xMin=0, xMax=300, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_12", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_23", xMin=0, xMax=150, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_23", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_34", xMin=0, xMax=100, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_34", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_45", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_45", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_56", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_56", yLabel="Events", logY=True, rebin=1)
-    makePlot("sq_dmerge_67", xMin=0, xMax=50, yMin=1e-1, yMax=-1, xLabel="sq_dmerge_67", yLabel="Events", logY=True, rebin=1)
+
 
 
 
