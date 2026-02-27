@@ -1,0 +1,12 @@
+{
+  "ngenerate": 200000,
+  "userfile": 3,
+  "roundmask": 3,
+  "xtail": 10,
+  "ytail": 513,
+  "xweight": 1.2,
+  "yweight": 0.06,
+  "withDip": true,
+  "withSol": false,
+  "withCorr": false
+}
