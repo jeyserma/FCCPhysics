@@ -431,12 +431,14 @@ def makePlotHiggsDecays(hName, outName="", xMin=0, xMax=100, yMin=1, yMax=1e5, x
     else:
         sigs = [[f'wzp6_ee_{x}H_H{yy}_ecm{ecm}' for x in z_decays for yy in y.split(",")] for y in h_decays]
     if legPos == "left":
-        leg = ROOT.TLegend(.2, .925-(len(sigs)/4+1)*0.1, .5, .925)
+        #leg = ROOT.TLegend(.2, .925-(len(sigs)/4+1)*0.1, .5, .925)
+        leg = ROOT.TLegend(.2, .925-len(sigs)*0.05, .5, .925)
     else:
-        leg = ROOT.TLegend(.65, .925-(len(sigs)/4+1)*0.1, .95, .925)
+        #leg = ROOT.TLegend(.6, .925-(len(sigs)/4+1)*0.1, .95, .925)
+        leg = ROOT.TLegend(.6, .925-len(sigs)*0.05, .95, .925)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
-    leg.SetTextSize(0.03)
+    leg.SetTextSize(0.04)
     leg.SetMargin(0.25)
 
     hists = []
@@ -854,6 +856,9 @@ if __name__ == "__main__":
     h_decays_colors_agg["p8_ee_ZZ_ecm240"] = ROOT.TColor.GetColor("#a15f86")
     h_decays_colors_agg["wz3p6_ee_tautau_ecm240,wz3p6_ee_mumu_ecm240,wz3p6_ee_ee_Mee_30_150_ecm240,wz3p6_ee_uu_ecm240,wz3p6_ee_dd_ecm240,wz3p6_ee_cc_ecm240,wz3p6_ee_ss_ecm240,wz3p6_ee_bb_ecm240,wz3p6_ee_nunu_ecm240"] = ROOT.TColor.GetColor("#3d4c74")
 
+    h_decays_colors_agg_nw = {"bb,cc,ss": ROOT.TColor.GetColor("#E69F00"), "gg": ROOT.TColor.GetColor("#0072B2"), "WW,ZZ":  ROOT.TColor.GetColor("#009E73"), "tautau": ROOT.TColor.GetColor("#E69F00"), "Za": ROOT.TColor.GetColor("#0072B2"), "aa,mumu,inv":  ROOT.TColor.GetColor("#009E73"), "p8_ee_WW_ecm240,p8_ee_WW_mumu_ecm240,p8_ee_WW_ee_ecm240": ROOT.TColor.GetColor("#E69F00"), "p8_ee_ZZ_ecm240": ROOT.TColor.GetColor("#0072B2"), "wz3p6_ee_tautau_ecm240,wz3p6_ee_mumu_ecm240,wz3p6_ee_ee_Mee_30_150_ecm240,wz3p6_ee_uu_ecm240,wz3p6_ee_dd_ecm240,wz3p6_ee_cc_ecm240,wz3p6_ee_ss_ecm240,wz3p6_ee_bb_ecm240,wz3p6_ee_nunu_ecm240":  ROOT.TColor.GetColor("#009E73")}
+    
+
 
     '''
             "ZH"        : ROOT.TColor.GetColor("#e42536"),#e42536
@@ -1008,13 +1013,13 @@ if __name__ == "__main__":
         makePlot("recoil_mva_low", outName="recoil_mva_low_noLog", xMin=100, xMax=150, yMin=0, yMax=5000e3, xLabel="Recoil mass (GeV)", yLabel="Events", logY=False, rebin=1, sig_scale=10)
         makePlot("recoil_mva_high", outName="recoil_mva_high_noLog", xMin=100, xMax=150, yMin=0, yMax=800e3, xLabel="Recoil mass (GeV)", yLabel="Events", logY=False, rebin=1, sig_scale=10)
 
-        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_a",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_a, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
-        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_b",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_b, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
-        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_c",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_c, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
+        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_a",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_a, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
+        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_b",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_b, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
+        makePlotHiggsDecays("best_clustering_idx_nosel", outName="best_clustering_idx_nosel_c",  xMin=-1, xMax=4, yMin=0, yMax=1.2, xLabels=["No pairs", "Inclusive", "Exclusive N=2", "Exclusive N=4", "Exclusive N=6"], yLabel="Events", logY=False, h_decays=h_decays_agg_c, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
 
-        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_a", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_a, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
-        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_b", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_b, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
-        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_c", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_c, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg)
+        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_a", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_a, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
+        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_b", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_b, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
+        makePlotHiggsDecays("njets_inclusive", outName="njets_inclusive_c", xMin=0, xMax=11, yMin=0, yMax=0.7, yLabel="Events (normalized)", xLabel="Number of jets (inclusive)", xLabels=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], logY=False, h_decays=h_decays_agg_c, h_decays_labels=h_decays_labels_agg, h_decays_colors=h_decays_colors_agg_nw)
 
 
         makePlotHiggsDecays("zqq_m_best_nosel", xMin=0, xMax=200, yMin=1e-5, yMax=10, xLabel="zqq_m_best_nosel", yLabel="Events", logY=True)

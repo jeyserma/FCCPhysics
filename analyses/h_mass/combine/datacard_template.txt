@@ -1,0 +1,23 @@
+imax *
+jmax *
+kmax *
+---------------
+shapes sig_ecm$ecm          * datacard.root w:sig
+shapes bkg_$flavor_ecm$ecm  * datacard.root w:bkg
+shapes data_obs             * datacard.root w:data_obs
+---------------
+---------------
+bin            $flavor_cat$cat_ecm$ecm
+observation     -1
+------------------------------
+bin          $flavor_cat$cat_ecm$ecm        $flavor_cat$cat_ecm$ecm
+process      sig_ecm$ecm                    bkg_$flavor_ecm$ecm
+process      0                              $bkg_id
+rate         $rate_sig                      $rate_bkg
+--------------------------------
+bkg_norm_$flavor_ecm$ecm rateParam * bkg_$flavor_ecm$ecm 1
+BES_ecm$ecm param 0 1
+SQRTS_ecm$ecm param 0 1
+LEPSCALE_MU_ecm$ecm param 0 1
+LEPSCALE_EL_ecm$ecm param 0 1
+
