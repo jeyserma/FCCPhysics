@@ -1,4 +1,4 @@
-import sys, os, glob, shutil
+import sys, os, glob, shutil, re
 import time
 import argparse
 import logging
@@ -12,29 +12,42 @@ logger.setLevel(logging.INFO)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-s", "--submit", action='store_true', help="Submit to batch system")
-parser.add_argument("-c", "--clean", action='store_true', help="Clean directory")
-parser.add_argument("-l", "--local", action='store_true', help="Execute locally")
-parser.add_argument("-n", "--njobs", type=int, help="number of jobs", default=10)
-parser.add_argument("-i", "--inputfile", type=str, help="Input file", default="cards/fccee_v23.dat")
-parser.add_argument("-p", "--accelerator", type=str, help="Accelerator config", default="FCCee_Z_4IP_04may23")
-parser.add_argument("-d", "--parameter_set", type=str, help="Parameter set", default="FCCee_Z256")
+parser.add_argument("--submit", action='store_true', help="Submit to batch system")
+parser.add_argument("--merge", action='store_true', help="Merge ROOT files")
+parser.add_argument("--dryrun", action='store_true', help="dry run")
 parser.add_argument("--suffix", type=str, help="Suffix", default="")
-parser.add_argument("--condor_queue", type=str, help="Condor priority", choices=["espresso", "microcentury", "longlunch", "workday", "tomorrow", "testmatch", "nextweek"], default="workday")
+
+parser.add_argument("-n", "--njobs", type=int, help="number of jobs", default=10)
+parser.add_argument("-i", "--input_file", type=str, help="Input file", default="cards/studies.dat")
+parser.add_argument("-p", "--accelerator", type=str, help="Accelerator config", default="FCCee_Z_GHC_V25p1")
+parser.add_argument("-d", "--parameter_set", type=str, help="Parameter set", default="Z256_2T_grids8")
+
+parser.add_argument("--condor_queue", type=str, help="Condor priority", choices=["espresso", "microcentury", "longlunch", "workday", "tomorrow", "testmatch", "nextweek"], default="longlunch")
 parser.add_argument("--condor_priority", type=str, help="Condor priority", default="group_u_FCC.local_gen")
-parser.add_argument("--storagedir", type=str, help="Base directory to save the samples", default="/ceph/submit/data/group/fcc/ee/detector/guineapig_fixWindow/") # guineapig_bz_2T  guineapig
-parser.add_argument("--maxMemory", help="Maximum job memory", type=float, default=2000)
+parser.add_argument("--storagedir", type=str, help="Base directory to save the samples", default="/ceph/submit/data/group/fcc/ee/detector/guineapig_studies/")
+parser.add_argument("--logdir", type=str, help="Base directory to save the log files", default="logdir")
+
+parser.add_argument("--cms_pool", action="store_true", help="Submit to CMS pool")
 parser.add_argument("--osg_pool", action="store_true", help="Submit to OSG pool (Open Science Grid)")
+parser.add_argument("--max_memory", help="Maximum job memory", type=float, default=500)
+parser.add_argument("--njobs_per_sub", help="Maximum number of jobs per submission", type=int, default=5000)
+parser.add_argument("--xrootd", action='store_true', help="Use XrootD transfer")
+
+parser.add_argument("--seeddir", type=str, help="Base directory to extract seeds", default=None)
+
 args = parser.parse_args()
 
 
 
-GP_STACK = "/cvmfs/sw.hsf.org/key4hep/setup.sh -r 2024-03-10"
-#GP_EXEC = f"{os.getcwd()}/guinea-pig/gp/bin/guinea"
-#GP_EXEC = f"{os.getcwd()}/guinea-pig_bz/gp/bin/guinea"
-#GP_EXEC = f"{os.getcwd()}/guinea-pig_tracking/gp/bin/guinea"
-GP_EXEC = f"{os.getcwd()}/guinea-pig_tracking/gp/bin/guinea"
 SINGULARITY = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest"
+SINGULARITY = "/cvmfs/unpacked.cern.ch/gitlab-registry.cern.ch/key4hep/k4-deploy/alma9:latest"
+
+GP_STACK = "/cvmfs/sw.hsf.org/key4hep/setup.sh -r 2025-05-29"
+#GP_EXEC = f"{os.getcwd()}/guinea-pig-15122025/gp/bin/guinea"
+GP_EXEC = f"{os.getcwd()}/guinea-pig-15122025_dev/build/src/guinea"
+GP_EXEC = f"{os.getcwd()}/guinea-pig-15122025_dev_time/build/src/guinea"
+#GP_EXEC = f"{os.getcwd()}/guinea-pig-15122025_dev/build_theta0/src/guinea"
+
 HOSTNAME = socket.gethostname()
 
 
@@ -48,313 +61,348 @@ def get_voms_proxy_path():
         print(f"Error running voms-proxy-info: {e}")
     return None
 
+
+def chunk_list(lst, chunk_size):
+    return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
+
+pdg_map = {
+    13: 'mu-',
+    -13: 'mu+',
+    11: 'e-',
+    -11: 'e+',
+    22: 'gamma',
+    211: 'pi+',
+    -211: 'pi-',
+}
+
+
+
+
 class GPProducer:
 
-    def __init__(self, accelerator, parameter_set, inputFile, storagedir, args):
-        self.accelerator = accelerator
-        self.parameter_set = parameter_set
-        self.inputFile = inputFile
-        self.storagedir = storagedir
-
+    def __init__(self, args):
+        self.args = args
         self.cwd = os.getcwd()
-        
-        if self.inputFile[0] != "/":
-            self.inputFile = f"{self.cwd}/{self.inputFile}"
-        self.baseInputFile = os.path.basename(self.inputFile)
+        self.stack = GP_STACK
+        self.gp_exec = GP_EXEC
+        self.storagedir = args.storagedir
+
+
+        self.accelerator = args.accelerator
+        self.parameter_set = args.parameter_set
+        self.input_file = args.input_file
+        if self.input_file[0] != "/":
+            self.input_file = f"{self.cwd}/{self.input_file}"
+        #self.input_file_name = os.path.basename(self.input_file)
 
         self.suffix = f"_{args.suffix}" if args.suffix else ""
-
-        self.out_dir = f"{self.storagedir}/{self.accelerator}_{self.parameter_set}{self.suffix}/"
-        self.log_dir = f"{self.out_dir}/logs/"
-        self.local_dir = f"{self.cwd}/local_gp/{self.accelerator}_{self.parameter_set}/"
-
-        self.condor_queue = args.condor_queue
-        self.condor_priority = args.condor_priority
-        self.args = args
-
-    def clean(self):
-        # remove empty files
-        os.system(f"cd {self.out_dir} && find . -type f -size 0b -print")
-        ans = input("Remove above zero-size files? (y/n)")
-        if ans == "y":
-            os.system(f"cd {self.out_dir} && find . -type f -size 0b -delete")
-
-    def generate_submit(self, njobs):
-        if not os.path.exists(self.out_dir):
-            os.makedirs(self.out_dir)
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-
-        # copy input file and executable to output dir
-        os.system(f"cp {self.inputFile} {self.out_dir}")
-        os.system(f"cp {GP_EXEC} {self.out_dir}")
-        out_dir_xrd = self.out_dir.replace("/ceph/submit", "")
-
-        njob = 0
-        seeds = []
-        while njob < njobs:
-            seed = f"{random.randint(100000,999999)}"
-            outputFile = f"{self.out_dir}/output_{seed}.pairs"
-            if os.path.exists(outputFile):
-                logger.warning(f"Output file with seed {seed} already exists, skipping")
-                continue
-            seeds.append(seed)
-            njob += 1
+        self.outdir = f"{self.storagedir}/{self.accelerator}/{self.parameter_set}{self.suffix}/" # main output dir
+        self.cfgdir = f"{self.outdir}/cfg/" # storage of executable, input file, seeds, ...
+        self.stodir = f"{self.outdir}/unmerged/" # output files
+        self.logdir = f"{self.cwd}/{args.logdir}/{self.accelerator}/{self.parameter_set}{self.suffix}/"
 
 
+    def make_script(self):
+        return f"""#!/bin/bash
+                set -euo pipefail
+                if [ $# -lt 1 ]; then
+                    echo "Usage: $0 SEED" >&2
+                    exit 1
+                fi
+                seed="$1"
+                echo "Release:"
+                cat /proc/version
+                echo "Hostname:"
+                hostname
+                echo "Current working directory:"
+                pwd
 
-        job = f"""
-#!/bin/bash
+                echo "List current working dir"
+                ls -lrt
+                set +u
+                echo "Checking CVMFS"
+                if ! timeout 15 ls "{self.stack.split(' ')[0]}" >/dev/null 2>&1; then
+                    echo "ERROR: Stack not found or not accessible: {self.stack.split(' ')[0]}" >&2
+                    exit 1
+                fi
+                echo "Sourcing stack"
+                if ! source {self.stack} >/dev/null 2>&1; then
+                    echo "ERROR: Failed to source stack: {self.stack}" >&2
+                    exit 1
+                fi
+                set -u
 
-set -e
+                echo "Set seed $seed"
+                sed -i -e \"s/rndm_seed=100000/rndm_seed=$seed/g\" input.dat
 
-SECONDS=0
-unset LD_LIBRARY_PATH
-unset PYTHONHOME
-unset PYTHONPATH
+                ls -lrt
+                SECONDS=0
+                echo "Running guinea-pig"
+                chmod 777 run_guinea
+                export LD_LIBRARY_PATH=/cvmfs/sft.cern.ch/lcg/releases/fftw3/3.3.10-33229/x86_64-el9-gcc11-opt/lib:$LD_LIBRARY_PATH
+                ./run_guinea --acc_file input.dat {self.accelerator} {self.parameter_set} output
+                ls -lrt
+                if [ ! -s "output.root" ]; then
+                    echo "ERROR: expected output file output.root not found or empty" >&2
+                    exit 100
+                fi
+                
+                mv pairs.dat output_$seed.pairs
+                mv pairs0.dat output0_$seed.pairs
+                mv output output_$seed.log
+                mv output.root output_$seed.root
+                ls -lrt
 
-echo "Release:"
-cat /proc/version
+                echo "guinea-pig step done"
+                gen_duration=$SECONDS
 
-echo "Hostname:"
-hostname
+                ls -lrt
+                echo "Done script, total duration ${{gen_duration}} seconds"
+                echo "${{gen_duration}}"
 
-echo "List current working dir:"
-ls -lrt
+                """
 
-echo "List cvmfs dir"
-ls -lrt /cvmfs
+    def generate(self):
 
+        if not os.path.exists(self.outdir):
+            os.makedirs(self.outdir)
+            os.makedirs(self.cfgdir)
+            os.makedirs(self.stodir)
 
-echo "Set seed"
-export seed=$1
-echo $seed
-sed -i -e \"s/rndm_seed=100000/rndm_seed=$seed/g\" {self.baseInputFile}
+            # copy if does not exist!!
+            if not os.path.isfile(f"{self.cfgdir}/input.dat"):
+                os.system(f"cp {self.input_file} {self.cfgdir}/input.dat")
+            if not os.path.isfile(f"{self.cfgdir}/run_guinea"):
+                os.system(f"cp {self.gp_exec} {self.cfgdir}/run_guinea") # don't use guinea, can clash with default stack version
+            os.system(f"touch {self.cfgdir}/seeds.txt")
 
+        self.transfer_input_files = ['input.dat', 'run_guinea']
+        self.transfer_output_files  = []
+        self.transfer_output_files.append(f"output_$(SEED).pairs")
+        self.transfer_output_files.append(f"output0_$(SEED).pairs")
+        self.transfer_output_files.append(f"output_$(SEED).log")
+        self.transfer_output_files.append(f"output_$(SEED).root")
 
+        self.max_memory = args.max_memory
 
+        self.used_seeds = set()
+        with open(f"{self.cfgdir}/seeds.txt", "r") as f:
+            for line in f:
+                seed = line.strip()
+                self.used_seeds.add(seed)
 
-echo "Checking CVMFS..." >&2
+        njobs = 0
+        self.seeds = []
+        if self.args.seeddir == None:
+            while njobs < args.njobs:
+                seed = f"{random.randint(100000,999999)}"
+                if seed in self.used_seeds:
+                    logger.warning(f"Seed {seed} already exists, skipping")
+                    continue
+                self.seeds.append(seed)
+                njobs += 1
+        else:
+            logger.info(f"Extract seeds from directory {self.args.seeddir}")
 
-if ! ls /cvmfs/sw.hsf.org/key4hep/setup.sh >/dev/null 2>&1; then
-    echo "ERROR: CVMFS or key4hep setup.sh not found!" >&2
-    exit 1
-fi
+            for f in glob.glob(f"{self.args.seeddir}/output_*.root"):
+                seed = re.search(r"output_(\d+)\.root$", f).group(1)
+                self.seeds.append(seed)
+                
+            logger.info(f"Found {len(self.seeds)} seeds") 
 
-echo "CVMFS looks OK. Sourcing..." >&2
-
-if ! source {GP_STACK} >/dev/null 2>&1; then
-    echo "ERROR: Failed to source Key4Hep setup" >&2
-    exit 1
-fi
-
-echo "Key4Hep sourcing successful" >&2
-
-
-echo "Start guinea-pig"
-mv {os.path.basename(GP_EXEC)} run
-chmod 777 run
-./run --acc_file {self.baseInputFile} {self.accelerator} {self.parameter_set} output
-
-# check exit code
-# fail job in case guinea-pig isn't properly executed --> try again via max_retries
-# on e.g. OSG, sometimes segfaults because of shared object libs not found
-rc=$?
-if [ $rc -ne 0 ]; then
-    echo "guinea-pig failed with exit code $rc" >&2
-    exit $rc
-fi
-
-# check if output file exists
-if [ ! -f pairs.dat ]; then
-    echo "guinea-pig did not produce pairs.dat" >&2
-    exit 1
-fi
-
-# check if output file exists
-if [ ! -f pairs0.dat ]; then
-    echo "guinea-pig did not produce pairs0.dat" >&2
-    exit 1
-fi
-
-echo "Done guinea-pig"
-
-mv pairs.dat output_$1.pairs
-mv pairs0.dat output0_$1.pairs
-
-ls -lrt
-
-
-#echo "Setup certificates directories"
-#ls -lrt /etc/grid-security/
-
-#if [ -d /cvmfs/grid.cern.ch/etc/grid-security/certificates ]; then
-#    export X509_CERT_DIR=/cvmfs/grid.cern.ch/etc/grid-security/certificates
-#else
-#    echo "ERROR: Grid certs not available on CVMFS"
-#    exit 1
-#fi
-
-
-
-#echo $X509_USER_PROXY
-
-#source /cvmfs/grid.cern.ch/alma9-ui-current/etc/profile.d/setup-alma9-test.sh
-#echo "Copy output file"
-#echo $X509_USER_PROXY
-#export X509_USER_PROXY=x509
-#echo $X509_USER_PROXY
-
-#voms-proxy-info -all
-#voms-proxy-info -all -file x509
-
-#xrdcp --version
-#xrdcp -d 3 output_${{seed}}_sim.root root://submit50.mit.edu/{out_dir_xrd}/output_${{seed}}_sim.root
-#rc=$?
-#if [ $rc -ne 0 ]; then
-#    echo "xrdcp failed with exit code $rc" >&2
-#    #exit $rc
-#fi
-#echo "Copy output file done"
-
-
-duration=$SECONDS
-echo "Duration: $(($duration))"
-
-        """
+        for seed in self.seeds:
+            os.system(f"echo {seed} >> {self.cfgdir}/seeds.txt")
 
         # make executable script
-        submitFn = f"{self.out_dir}/run_gp.sh"
+        script_sandbox = self.make_script()
+        submitFn = f"{self.cfgdir}/run_guinea.sh"
         fOut = open(submitFn, "w")
-        fOut.write(job)
-        subprocess.getstatusoutput(f"chmod 777 {submitFn}")
-
-
-
-        # make condor submission script
-        condorFn = f'{self.out_dir}/condor.cfg'
-        fOut = open(condorFn, 'w')
-
-        fOut.write(f'universe       = vanilla\n')
-        fOut.write(f'initialdir     = {self.out_dir}\n')
-        fOut.write(f'executable     = {submitFn}\n')
-        fOut.write(f'arguments      = $(SEED)\n')
-
-        fOut.write(f'Log            = logs/condor_job.$(ClusterId).$(ProcId).log\n')
-        fOut.write(f'Output         = logs/condor_job.$(ClusterId).$(ProcId).out\n')
-        fOut.write(f'Error          = logs/condor_job.$(ClusterId).$(ProcId).error\n')
-
-        fOut.write(f'should_transfer_files = YES\n')
-        fOut.write(f'when_to_transfer_output = ON_EXIT\n')
-        fOut.write(f'transfer_input_files = {os.path.basename(GP_EXEC)},{self.inputFile}\n')
-        fOut.write(f'transfer_output_files = output_$(SEED).pairs,output0_$(SEED).pairs\n')
-
-        fOut.write(f'on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
-        fOut.write(f'max_retries    = 50\n')
-        # retry the job if it failed due to output transfer failure (HoldReasonCode == 12)
-        # e.g. when job fails, it doesn't produce the output file, going to Hold (need to prevent it)
-        fOut.write(f'periodic_release = (HoldReasonCode == 12 && NumJobStarts < 50)\n')
-        fOut.write(f'on_exit_hold = False\n')
-        fOut.write(f'RequestMemory  = {args.maxMemory}\n')
-
-
-        if 'mit.edu' in HOSTNAME:
-            proxy_path = get_voms_proxy_path()
-            os.system(f"cp {proxy_path} {self.log_dir}/x509")
-            fOut.write(f'use_x509userproxy     = True\n')
-            fOut.write(f'x509userproxy         = logs/x509\n')
-            
-            fOut.write(f'Requirements          = ( BOSCOCluster =!= "t3serv008.mit.edu" && BOSCOCluster =!= "ce03.cmsaf.mit.edu" && BOSCOCluster =!= "eofe8.mit.edu")\n')
-            fOut.write(f'+DESIRED_Sites = "mit_tier2,mit_tier3"\n')
-            fOut.write(f'+SingularityImage       = "{SINGULARITY}"\n')
-            fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs,/etc/grid-security"\n')
-            #fOut.write(f'+SingularityImage       = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest"\n')
-            fOut.write(f'+SingularityBindCVMFS   = True\n')
-            fOut.write(f'Requirements          = ( BOSCOCluster =!= "t3serv008.mit.edu" && BOSCOCluster =!= "ce03.cmsaf.mit.edu" && BOSCOCluster =!= "eofe8.mit.edu")\n')
-
-        elif 'cern.ch' in HOSTNAME:
-            fOut.write(f'+JobFlavour    = "{self.condor_queue}"\n')
-            fOut.write(f'+AccountingGroup = "{self.condor_priority}"\n')
-
-        # OSG pool
-        elif args.osg_pool:
-            proxy_path = get_voms_proxy_path()
-            os.system(f"cp {proxy_path} {self.log_dir}/x509")
-            fOut.write(f'use_x509userproxy     = True\n')
-            #fOut.write(f'x509userproxy         = /tmp/x509up_u$(id -u)\n')
-            fOut.write(f'x509userproxy         = logs/x509\n')
-            
-            # https://portal.osg-htc.org/documentation/htc_workloads/specific_resource/requirements/#additional-feature-specific-attributes
-            #fOut.write(f'+SingularityImage       = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest"\n')
-            fOut.write(f'+SingularityImage       = "{SINGULARITY}"\n')
-            ##fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs,/etc/grid-security"\n')
-            fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs"\n')
-            fOut.write(f'+ProjectName            = "MIT_submit"\n')
-            fOut.write(f'+SingularityBindCVMFS   = True\n')
-            fOut.write(f'Requirements          = ( OSGVO_OS_STRING == "RHEL 9" && HAS_CVMFS_singularity_opensciencegrid_org == TRUE && HAS_SINGULARITY == TRUE )\n')
-            # HAS_CVMFS_sw_hsf_org
-            # HAS_CVMFS_singularity_opensciencegrid_org
-            # && HAS_CVMFS_sw_hsf_org == True
-
-
-
-
-
-        seedsStr = ' \n '.join([str(s) for s in seeds])
-        fOut.write(f'queue SEED in ( \n {seedsStr} \n)\n')
-
-        fOut.close()
-
-
-        subprocess.getstatusoutput(f'chmod 777 {condorFn}')
-        os.system(f"condor_submit {condorFn}")
-
-        logger.info(f"Written to {self.out_dir}")
-
-    def generate_local(self):
-        if os.path.exists(self.local_dir):
-            logger.error(f"Please remove local directory {self.local_dir}")
-            sys.exit(1)
-        os.makedirs(self.local_dir)
-        logger.info(f"Generate GP event locally")
-
-        submitFn = f"{self.local_dir}/run_gp.sh"
-
-        fOut = open(submitFn, "w")
-        fOut.write("#!/bin/bash\n")
-        fOut.write("SECONDS=0\n")
-        fOut.write("unset LD_LIBRARY_PATH\n")
-        fOut.write("unset PYTHONHOME\n")
-        fOut.write("unset PYTHONPATH\n")
-        fOut.write(f"source {GP_STACK}\n")
-        fOut.write(f"cp {self.inputFile} {self.baseInputFile}\n")
-        fOut.write(f"ls -lrt\n")
-
-        fOut.write('echo "START GUINEA-PIG"\n')
-        fOut.write(f"{GP_EXEC} --acc_file {self.baseInputFile} {self.accelerator} {self.parameter_set} output \n")
-        fOut.write("echo \"DONE GUINEA-PIG\"\n")
-        fOut.write("duration=$SECONDS\n")
-        fOut.write("echo \"Duration: $(($duration)) seconds\"\n")
-        fOut.close()
+        fOut.write(script_sandbox)
 
         subprocess.getstatusoutput(f"chmod 777 {submitFn}")
 
-        os.system(f"cd {self.local_dir} && ./run_gp.sh | tee output.txt")
-        logger.info(f"Done, saved to {self.local_dir}")
+        # get latest submission
+        submf = glob.glob(f'{self.cfgdir}/condor_v*.cfg')
+        submv = versions = [int(re.search(r"_v(\d+)\.cfg$", f).group(1)) for f in submf if re.search(r"_v(\d+)\.cfg$", f)]
+        max_submv = max(submv) if submv else 0
+
+
+        seeds_chunked = chunk_list(self.seeds, args.njobs_per_sub)
+        for i,seeds in enumerate(seeds_chunked):
+            subv = i+1+max_submv
+            logger.info(f"Submit {i+1}/{len(seeds_chunked)} with version {subv} ")
+
+            logdir = f"{self.logdir}/v{subv}/"
+            if not os.path.exists(logdir):
+                os.makedirs(logdir)
+
+
+            # make condor submission script
+            condorFn = f'{self.cfgdir}/condor_v{subv}.cfg'
+            fOut = open(condorFn, 'w')
+
+            fOut.write(f'universe           = vanilla\n')
+            fOut.write(f'initialdir         = {self.cfgdir}\n')
+            fOut.write(f'output_directory   = {self.stodir}\n')
+            
+            fOut.write(f'executable         = {submitFn}\n')
+            fOut.write(f'arguments          = $(SEED)\n')
+
+            fOut.write(f'Log                = {logdir}/condor_job.$(ClusterId).$(ProcId).log\n')
+            fOut.write(f'Output             = {logdir}/condor_job.$(ClusterId).$(ProcId).out\n')
+            fOut.write(f'Error              = {logdir}/condor_job.$(ClusterId).$(ProcId).error\n')
+
+            fOut.write(f'should_transfer_files = YES\n')
+            fOut.write(f'when_to_transfer_output = ON_EXIT\n')
+
+            fOut.write(f'transfer_input_files = {",".join(self.transfer_input_files)}\n')
+            fOut.write(f'transfer_output_files = {",".join(self.transfer_output_files)}\n') # done by xrdcp
+            #if args.xrootd:
+            #    fOut.write(f'transfer_output_files = ""\n') # explicit no transfer files back
+
+                
+
+            fOut.write(f'on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
+            fOut.write(f'max_retries    = 3\n')
+            fOut.write(f'on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)\n')
+            #fOut.write(f'periodic_release = (NumJobStarts < 3)\n')
 
 
 
+            # Intercept memory growth before the site removes the job at 1.2 * RequestMemory
+            fOut.write(f'periodic_hold = (JobStatus == 2) && (MemoryUsage > 1.10 * RequestMemory)\n')
+            fOut.write(f'periodic_hold_reason = "Retrying after high memory usage"\n')
+            fOut.write(f'periodic_hold_subcode = 9001\n')
+            fOut.write(f'periodic_release = (((HoldReasonCode == 12) && (HoldReasonSubCode == 2) && (NumHolds < 3)) || ((HoldReasonCode == 3) && (HoldReasonSubCode == 9001) && (NumHolds < 3)) || ((HoldReasonCode == 3) && (HoldReasonSubCode == 0) && (NumHolds < 3)) )\n')
+            
+
+
+            # Only auto-release the holds we created ourselves
+            
+            fOut.write(f'+JobBatchName = "GUINEA_{self.accelerator}_{self.parameter_set}{self.suffix}_v{subv}"\n')
+
+            fOut.write(f'RequestMemory  = {self.max_memory}\n')
+
+            proxy_path = get_voms_proxy_path()
+            os.system(f"cp {proxy_path} {self.cfgdir}/")
+            fOut.write(f'use_x509userproxy     = True\n')
+            fOut.write(f'x509userproxy         = {self.cfgdir}/{os.path.basename(proxy_path)}\n')
+
+            # global pool
+            if args.cms_pool:
+                #proxy_path = get_voms_proxy_path()
+                #os.system(f"cp {proxy_path} {self.log_dir}/")
+                #fOut.write(f'use_x509userproxy     = True\n')
+                #fOut.write(f'x509userproxy         = logs/{os.path.basename(proxy_path)}\n')
+
+                fOut.write(f'+SingularityImage       = "{SINGULARITY}"\n')
+                fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs"\n')
+                fOut.write(f'+DESIRED_Sites = "T2_AT_Vienna,T2_BE_IIHE,T2_BE_UCL,T2_BR_SPRACE,T2_BR_UERJ,T2_CH_CERN,T2_CH_CERN_AI,T2_CH_CERN_HLT,T2_CH_CERN_Wigner,T2_CH_CSCS,T2_CH_CSCS_HPC,T2_CN_Beijing,T2_DE_DESY,T2_DE_RWTH,T2_EE_Estonia,T2_ES_CIEMAT,T2_ES_IFCA,T2_FI_HIP,T2_FR_CCIN2P3,T2_FR_GRIF_IRFU,T2_FR_GRIF_LLR,T2_FR_IPHC,T2_GR_Ioannina,T2_HU_Budapest,T2_IN_TIFR,T2_IT_Bari,T2_IT_Legnaro,T2_IT_Pisa,T2_IT_Rome,T2_KR_KISTI,T2_MY_SIFIR,T2_MY_UPM_BIRUNI,T2_PK_NCP,T2_PL_Swierk,T2_PL_Warsaw,T2_PT_NCG_Lisbon,T2_RU_IHEP,T2_RU_INR,T2_RU_ITEP,T2_RU_JINR,T2_RU_PNPI,T2_RU_SINP,T2_TH_CUNSTDA,T2_TR_METU,T2_TW_NCHC,T2_UA_KIPT,T2_UK_London_IC,T2_UK_SGrid_Bristol,T2_UK_SGrid_RALPP,T2_US_Caltech,T2_US_Florida,T2_US_MIT,T2_US_Nebraska,T2_US_Purdue,T2_US_UCSD,T2_US_Vanderbilt,T2_US_Wisconsin,T3_CH_CERN_CAF,T3_CH_CERN_DOMA,T3_CH_CERN_HelixNebula,T3_CH_CERN_HelixNebula_REHA,T3_CH_CMSAtHome,T3_CH_Volunteer,T3_US_HEPCloud,T3_US_NERSC,T3_US_OSG,T3_US_PSC,T3_US_SDSC"\n')
+                fOut.write(f'+SingularityBindCVMFS   = True\n')
+                fOut.write(f'+AccountingGroup      = "analysis.jaeyserm"\n')
+                fOut.write(f'Requirements          = (  HAS_SINGULARITY == TRUE )\n')
+
+            # OSG pool
+            elif args.osg_pool:
+                # https://portal.osg-htc.org/documentation/htc_workloads/specific_resource/requirements/#additional-feature-specific-attributes
+                fOut.write(f'+SingularityImage       = "{SINGULARITY}"\n')
+                ##fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs,/etc/grid-security"\n')
+                fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs"\n')
+                fOut.write(f'+ProjectName            = "MIT_submit"\n')
+                fOut.write(f'+SingularityBindCVMFS   = True\n')
+                fOut.write(f'Requirements          = ( OSGVO_OS_STRING == "RHEL 9" && HAS_CVMFS_singularity_opensciencegrid_org == TRUE && HAS_SINGULARITY == TRUE )\n')
+                
+
+
+
+            elif 'mit.edu' in HOSTNAME:
+
+                
+                fOut.write(f'Requirements          = ( BOSCOCluster =!= "t3serv008.mit.edu" && BOSCOCluster =!= "ce03.cmsaf.mit.edu" && BOSCOCluster =!= "eofe8.mit.edu")\n')
+                fOut.write(f'+DESIRED_Sites = "mit_tier2,mit_tier3"\n')
+                fOut.write(f'+SingularityImage       = "{SINGULARITY}"\n')
+                fOut.write(f'+SINGULARITY_BIND_EXPR       = "/cvmfs,/etc/grid-security"\n')
+                #fOut.write(f'+SingularityImage       = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest"\n')
+                fOut.write(f'+SingularityBindCVMFS   = True\n')
+                fOut.write(f'Requirements          = ( BOSCOCluster =!= "t3serv008.mit.edu" && BOSCOCluster =!= "ce03.cmsaf.mit.edu" && BOSCOCluster =!= "eofe8.mit.edu")\n')
+
+            elif 'cern.ch' in HOSTNAME:
+                fOut.write(f'+JobFlavour    = "{self.condor_queue}"\n')
+                fOut.write(f'+AccountingGroup = "{self.condor_priority}"\n')
+
+            seedsStr = ' \n '.join([str(s) for s in seeds])
+            fOut.write(f'queue SEED in ( \n {seedsStr} \n)\n')
+
+            fOut.close()
+
+            subprocess.getstatusoutput(f'chmod 777 {condorFn}')
+            os.system(f"condor_submit {condorFn}")
+
+            logger.info(f"Written to {self.outdir}")
+
+    def dryrun(self):
+        rundir = f"/tmp/guineapig/{self.accelerator}/{self.parameter_set}{self.suffix}/"
+
+        script_init = f"""
+        set -e
+
+        rm -rf {rundir}
+        mkdir -p {rundir}
+        cd {rundir}
+        pwd
+        cp {self.gp_exec} run_guinea
+        cp {self.input_file} input.dat
+        ls -lrt
+
+        """
+        subprocess.run(["/bin/bash", "-c", script_init])
+
+        script_sandbox = self.make_script()
+        with open(f"{rundir}/run.sh", "w") as tf:
+            tf.write(script_sandbox)
+        subprocess.run(["/bin/bash", "run.sh", "123456"], cwd=rundir, env={})
+
+    def merge(self):
+        batch_size = 200
+
+        #mergedir = os.path.join(self.outdir, "merged")
+        #os.makedirs(mergedir, exist_ok=True)
+
+        files = sorted(glob.glob(f"{self.stodir}/*.root", recursive=True))
+
+        print(f"Found {len(files)} ROOT files")
+
+        # split into chunks of 1000
+        for i in range(0, len(files), batch_size):
+
+            batch = files[i:i + batch_size]
+
+            outfile = os.path.join(
+                self.outdir,
+                f"output_{i//batch_size:04d}.root"
+            )
+
+            cmd = [
+                "hadd",
+                "-f",
+                "-j", "16",
+                outfile
+            ] + batch
+
+            print(f"Merging {len(batch)} files -> {outfile}")
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
 
 def main():
-    producer = GPProducer(args.accelerator, args.parameter_set, args.inputfile, args.storagedir, args)
+    producer = GPProducer(args)
     if args.submit:
-        producer.generate_submit(njobs=args.njobs)
-    if args.clean:
-        producer.clean()
-    if args.local:
-        producer.generate_local()
-
-
+        producer.generate()
+    #if args.clean:
+    #    producer.clean()
+    if args.dryrun:
+        producer.dryrun()
+    if args.merge:
+        producer.merge()
 
 if __name__ == "__main__":
     main()
