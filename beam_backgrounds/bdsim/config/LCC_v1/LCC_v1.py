@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot, make_axes_locatable
 from pathlib import Path
 import re
-import argparse
-import json
 
 def generate_4d_distribution(self, twiss_file, idx_start):
     np.random.seed(self._seed)
@@ -22,8 +20,8 @@ def generate_4d_distribution(self, twiss_file, idx_start):
     alfy=twiss_file.iloc[idx_start-1]['ALFY']
     betx=twiss_file.iloc[idx_start-1]['BETX'] #7861.70688987599
     bety=twiss_file.iloc[idx_start-1]['BETY'] #285.5641279561109
-    emitx = 0.74e-9
-    emity = 2.5e-12
+    emitx = 0.7e-9
+    emity = 2.6e-12
     gammax = (1.0 + alfx * alfx) / betx
     gammay = (1.0 + alfy * alfy) / bety
 
@@ -139,7 +137,7 @@ class MDIStudy:
 
         self._roundmask = kwargs.get("roundmask", 3)            # type of mask closer to the IP, 1: round mask (GDML), 2: elliptical mask (GDML), 3: jaw mask (BDSIM), 4: elliptical mask (BDSIM)
         self._maskA     = kwargs.get("maskA", [0.015, 0.015, 0.007, 0.013])                # masks aperture
-        self._extraA	= kwargs.get("extraA", ["21.8e-3", "6.98e-3", "26.8e-3", "22.8e-3", "8.03e-3", "19.3e-3"])	 # Aperture of BWL Hor, QC0L vert and hor(1 and 2) and QC2L vert an hor collimators
+        self._extraA	= kwargs.get("extraA", ["11.05e-3", "12.08e-3", "20.28e-3", "7.86e-3", "22.07e-3"])	 # Aperture of BWL Hor, QC0L vert and hor(1 and 2) and QC2L vert an hor collimators
 
         self._X0        = kwargs.get("X0", 0)	                 # horizontal beam centroid displacwithBement
         self._XP0       = kwargs.get("XP0", 0)               # horizontal beam centroid angle
@@ -197,7 +195,6 @@ class MDIStudy:
         ax2.plot(d.optics.S()-sOffset, 100*d.optics.Disp_x(), lw=1, label=r'D$_x$')
         ax.set_xlabel('Distance from the IP [m]'); ax.set_ylabel(r'Beta [m]')
         ax2.set_ylabel('Dispersion [cm]')
-        ax2.set_ylim(-20, 20)
         plt.legend(); ax.grid(ls='--'); 
         #ax2.set_ylim(-25, 85); ax.set_ylim(-5, 105)
         pybdsim.Plot.AddMachineLatticeFromSurveyToFigure(fig, d.model, sOffset=-sOffset)
@@ -234,7 +231,7 @@ class MDIStudy:
         #######################
 
         # Find an IP NOT on the edge of the sequence
-        idx_IP = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="IPG.1"].index[0]
+        idx_IP = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="IP"].index[0]
         # Find the first dipole BEFORE the ip to start the sequence conversion
         found, idx_start = 0, idx_IP
         while found<1+self._withBC1L:
@@ -250,8 +247,7 @@ class MDIStudy:
                 found += 1
             idx_stop +=1
 
-
-        drift_pre_mask, drift_pre_mask2, drift_pre_ip, drift_post_ip = twiss_file.iloc[idx_IP-3].name, twiss_file.iloc[idx_IP-11].name, twiss_file.iloc[idx_IP-1].name, twiss_file.iloc[idx_IP+2].name
+        drift_pre_mask, drift_pre_mask2, drift_pre_ip, drift_post_ip = twiss_file.iloc[idx_IP-3].name, twiss_file.iloc[idx_IP-11].name, twiss_file.iloc[idx_IP-1].name, twiss_file.iloc[idx_IP+1].name
 
         IR = twiss_file.iloc[idx_start:idx_stop]
         col_name = IR[IR["KEYWORD"]=="COLLIMATOR"].index
@@ -263,13 +259,12 @@ class MDIStudy:
             "# Collimator Settings\n",
             "name\tmaterial\txsize[m]\tysize[m]\n",
             f"{col_name[0]}\tinermet180\t{self._extraA[0]}\t30e-3\n",
-            f"{col_name[1]}\tinermet180\t30e-3\t{self._extraA[1]}\n",
+            f"{col_name[1]}\tinermet180\t{self._extraA[1]}\t30e-3\n",
             f"{col_name[2]}\tinermet180\t{self._extraA[2]}\t30e-3\n",
-            f"{col_name[3]}\tinermet180\t{self._extraA[3]}\t30e-3\n",
-            f"{col_name[4]}\tinermet180\t30e-3\t{self._extraA[4]}\n",
-            f"{col_name[5]}\tinermet180\t{self._extraA[5]}\t30e-3\n",
+            f"{col_name[3]}\tinermet180\t30e-3\t{self._extraA[3]}\n",
+            f"{col_name[4]}\tinermet180\t{self._extraA[4]}\t30e-3\n",
+            f"{col_name[5]}\tinermet180\t15e-3\t15e-3\n",
             f"{col_name[6]}\tinermet180\t15e-3\t15e-3\n",
-            f"{col_name[7]}\tinermet180\t15e-3\t15e-3\n",
         ]
         f.writelines(lines)
         f.close()
@@ -284,12 +279,12 @@ class MDIStudy:
         ap = ap.RemoveBelowValue(5e-3)
 
         found, idx_start_FF = 0, idx_IP
-        while found<5: # 4 is the number of quadrupole to form the doublet in the LCCO lattice
+        while found<5: # FOR TTBAR SHOULD CONSIDER 7 TO INCLUDE THE OTHER 2 QF
             if twiss_file.iloc[idx_start_FF]['KEYWORD'] == "QUADRUPOLE":
                 found += 1
             idx_start_FF -=1
         found, idx_stop_FF = 0, idx_IP
-        while found<5: # 4 is the number of quadrupole to form the doublet in the LCCO lattice
+        while found<5: # FOR TTBAR SHOULD CONSIDER 7 TO INCLUDE THE OTHER 2 QF
             if twiss_file.iloc[idx_stop_FF]['KEYWORD'] == "QUADRUPOLE":
                 found += 1
             idx_stop_FF +=1
@@ -326,13 +321,17 @@ class MDIStudy:
         print("Start converting the beamline into GMAD files\n")
 
 
-        idx_QC1L1 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QC1L1.2"].index[0]
+        idx_QC1L1 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QD0AL"].index[0]
         idx_stop = idx_QC1L1 +1
 
         if self._userfile == 4:
             print("Using injection particles at FFQ, thus cutting the beamline before the FFQ\n")
-            idx_QC2L2 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QC2L2.2"].index[0]
-            idx_start = idx_QC2L2-2
+            idx_QC2L2 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QF1BL"].index[0]
+            idx_start = idx_QC2L2
+        if self._userfile == 5:
+            print("Using injection particles at B0BL, thus cutting the beamline before the B0BL\n")
+            idx_B0BL = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="B0BL"].index[0]
+            idx_start = idx_B0BL
 
         a, b = pybdsim.Convert.MadxTfs2Gmad("GMAD/fcc_ee_z_b1_twiss_end.tfs",
                                             "GMAD/input",
@@ -356,17 +355,17 @@ class MDIStudy:
                 text[i] =text[i].replace(f"{drift_pre_ip}", "DRIFT_SOL")
             if drift_post_ip in text[i]:
                 text[i] =text[i].replace(f"{drift_post_ip}", "DRIFT_R1")
-            if col_name[6].replace(".", "") in text[i]:
-                text[i] =text[i].replace(col_name[6].replace(".", ""), "MASK_QC2L")
+            if col_name[5].replace(".", "") in text[i]:
+                text[i] =text[i].replace(col_name[5].replace(".", ""), "MASK_QC2L")
             if drift_pre_mask2 in text[i]:
                 text[i] =text[i].replace(f"{drift_pre_mask2}", "DRIFT_L2")
             if drift_pre_mask in text[i]:
                 text[i] =text[i].replace(f"{drift_pre_mask}", "DRIFT_L1")
-            if col_name[7].replace(".", "") in text[i]:
+            if col_name[6].replace(".", "") in text[i]:
                 if self._roundmask==2:
-                    text[i] =text[i].replace(col_name[7].replace(".", ""), "MASK_QC1L")
+                    text[i] =text[i].replace(col_name[6].replace(".", ""), "MASK_QC1L")
                 else:
-                    text[i] =text[i].replace(col_name[7].replace(".", ""), "MASK_QC1L, DRIFT_L0")
+                    text[i] =text[i].replace(col_name[6].replace(".", ""), "MASK_QC1L, DRIFT_L0")
             i+=1
         with open("GMAD/input_sequence.gmad", "w") as file:
             file.writelines(text)
@@ -463,7 +462,10 @@ class MDIStudy:
                 'precisionRegion: cutsregion, prodCutPhotons=1e-6, prodCutElectrons=1e-3, prodCutPositrons=1e-3;\n',
                 '! physics options - full physics\n',
                 'option, physicsList="G4FTFP_BERT",\n',
+                # 'option, physicsList="xray_reflection em synch_rad em_extra",\n',
+                # 'xrayAllSurfaceRoughness=100e-9,\n',
                 'geant4PhysicsMacroFileName="emextraphysics.mac",\n',
+                'useGammaToMuMu = 1, \n',
                 'minimumKineticEnergy = 7e-3,\n',
                 'particlesToExcludeFromCuts ="22",\n',
                 'magnetGeometryType="none",\n',
@@ -481,8 +483,8 @@ class MDIStudy:
                 'tunnelSoilThickness=2,\n',
                 'tunnelVisible=0,\n',
                 'tunnelIsInfiniteAbsorber=1;\n',
-                #'csample, range=QC1L12, partID={22};'
-                'sample, range=QC1L12, partID={22};'
+                'option, samplerDiameter=36*mm;'
+                'sample, range=QD0AL, partID={22};'
                 ]
         with open("GMAD/input_options.gmad", "w") as file:
             file.writelines(lines)
@@ -492,10 +494,10 @@ class MDIStudy:
             with open("GMAD/input_components.gmad", "a") as file:
                 file.write('DRIFT_L1: drift, l=0.04, aper1=0.015, apertureType="circular", fieldAll="d1field";\n')
                 file.write('DRIFT_L0: drift, l=0.24, aper1=0.015, apertureType="circular", fieldAll="d0b";\n')
-                file.write('DRIFT_SOL: element, fieldAll="detectorfield", geometryFile="gdml:CC_geometry.gdml", l=2*2.100247523199509, stripOuterVolume=0;\n')
+                file.write('DRIFT_SOL: element, fieldAll="detectorfield", geometryFile="gdml:CC_geometry.gdml", l=2*2.1000000000014825, stripOuterVolume=0;\n')
                 file.write('DRIFT_R1: drift, l=0.3, apertureType="circular", aper1=15e-3, fieldAll="d2field";\n')
                 file.write(f'MASK_QC2L: ecol, horizontalWidth=0.046, l=0.02, material="W", region="precisionRegion", xsize={self._maskA[0]}, ysize={self._maskA[1]};\n')
-                file.write(f'DRIFT_L2: drift, l=0.659999999998263, aper1=0.025, apertureType="circular";\n')
+                file.write(f'DRIFT_L2: drift, l=0.710000000001173, aper1=0.025, apertureType="circular";\n')
             if self._roundmask==2:
                 with open("GMAD/input_components.gmad", "a") as file:
                     file.write('MASK_QC1L: element, l=0.06, geometryFile="gdml:elliptical_mask7_9.gdml", stripOuterVolume=0, markAsCollimator=1, fieldAll="maskfield";\n')
@@ -508,27 +510,27 @@ class MDIStudy:
             if self._withCorr:
                 with open("GMAD/input_options.gmad", "a") as file:
                     file.write('detectorfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad;\n')
-                    file.write('maskfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.03;\n')
-                    file.write('d1field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.26+.02;\n')
-                    file.write('d2field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=-2.100247523199509-.15;\n')
-                    file.write('dmask: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.25;\n')
-                    file.write('d0b: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.12;\n')
+                    file.write('maskfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.03;\n')
+                    file.write('d1field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.26+.02;\n')
+                    file.write('d2field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=-2.1000000000014825-.15;\n')
+                    file.write('dmask: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.25;\n')
+                    file.write('d0b: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map_corr.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.12;\n')
             else:
                 with open("GMAD/input_options.gmad", "a") as file:
                     file.write('detectorfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad;\n')
-                    file.write('maskfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.03;\n')
-                    file.write('d1field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.26+.02;\n')
-                    file.write('d2field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=-2.100247523199509-.15;\n')
-                    file.write('dmask: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.25;\n')
-                    file.write('d0b: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.100247523199509+.12;\n')
+                    file.write('maskfield: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.03;\n')
+                    file.write('d1field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.26+.02;\n')
+                    file.write('d2field: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=-2.1000000000014825-.15;\n')
+                    file.write('dmask: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.25;\n')
+                    file.write('d0b: field, type="bmap3d", magneticFile = "bdsim3d:3D_field_map.dat", axisAngle=1, axisY=1, angle=-15*mrad, z=2.1000000000014825+.12;\n')
         else:
             with open("GMAD/input_components.gmad", "a") as file:
                 file.write('DRIFT_L1: drift, l=0.04, aper1=0.015, apertureType="circular";\n')
                 file.write('DRIFT_L0: drift, l=0.24, aper1=0.015, apertureType="circular";\n')
-                file.write('DRIFT_SOL: element, geometryFile="gdml:CC_geometry.gdml", l=2*2.100247523199509, stripOuterVolume=0;\n')
+                file.write('DRIFT_SOL: element, geometryFile="gdml:CC_geometry.gdml", l=2*2.1000000000014825, stripOuterVolume=0;\n')
                 file.write('DRIFT_R1: drift, l=0.3, apertureType="circular", aper1=15e-3;\n')
                 file.write(f'MASK_QC2L: ecol, horizontalWidth=0.046, l=0.02, material="W", region="precisionRegion", xsize={self._maskA[0]}, ysize={self._maskA[1]};\n')
-                file.write(f'DRIFT_L2: drift, l=0.659999999998263, aper1=0.025, apertureType="circular";\n')
+                file.write(f'DRIFT_L2: drift, l=0.710000000001173, aper1=0.025, apertureType="circular";\n')
                 if self._roundmask==2:
                     with open("GMAD/input_components.gmad", "a") as file:
                         file.write('MASK_QC1L: element, l=0.06, geometryFile="gdml:elliptical_mask7_9.gdml", stripOuterVolume=0, markAsCollimator=1, fieldAll="maskfield";\n')
@@ -598,11 +600,12 @@ class MDIStudy:
                     text[i] = line.replace("gausstwiss", "userfile")
 
             # MODIFY S0 TO THE FFQ POSITION (make sure it's a scalar)
-            S_QC2L2 = twiss_file.iloc[idx_QC2L2].S
-            S_START = twiss_file.iloc[idx_start].S
-            L_QC2L2 = twiss_file.iloc[idx_QC2L2].L
+            # S_QC2L2 = twiss_file.iloc[idx_QC2L2].S
+            # S_START = twiss_file.iloc[idx_start].S
+            # L_QC2L2 = twiss_file.iloc[idx_QC2L2].L
             # Considering that the beam line won't be as in twiss file
-            S0 = float(S_QC2L2 - S_START - L_QC2L2/2 + self._deltaS)
+            # S0 = float(S_QC2L2 - S_START - L_QC2L2 + self._deltaS)
+            S0 = float(self._deltaS)
 
             beam_idx = None
             for i, line in enumerate(text):
@@ -621,65 +624,30 @@ class MDIStudy:
             # 4) Write back
             with open("GMAD/input_beam.gmad", "w") as file:
                 file.writelines(text)
+  
+            # FILE IS ALREADY PREPARED OUTSIDE WITH THE NAME injectionpart_ffq.dat --> see xutil
+            add_before_last_semicolon("GMAD/input_beam.gmad", '\tdistrFile = "injectionpart_ffq.dat"')
+            add_before_last_semicolon("GMAD/input_beam.gmad", '\tdistrFileFormat = "x[m]:xp[rad]:y[m]:yp[rad]:E[GeV]"')
+        elif self._userfile==5: # Injection beam at B0BL integrated over 100 turns
+            with open("GMAD/input_beam.gmad", "r") as file:
+                text = file.readlines()
+
+            # Replace gausstwiss -> userfile
+            for i, line in enumerate(text):
+                if "gausstwiss" in line:
+                    text[i] = line.replace("gausstwiss", "userfile")
+            # 4) Write back
+            with open("GMAD/input_beam.gmad", "w") as file:
+                file.writelines(text)
 
             # tab['s','ipg.1']-4.03734033    
             # FILE IS ALREADY PREPARED OUTSIDE WITH THE NAME injectionpart.dat --> see xutil
-            add_before_last_semicolon("GMAD/input_beam.gmad", '\tdistrFile = "injectionpart.dat"')
+            add_before_last_semicolon("GMAD/input_beam.gmad", '\tdistrFile = "injectionpart_b0bl.dat"')
             add_before_last_semicolon("GMAD/input_beam.gmad", '\tdistrFileFormat = "x[m]:xp[rad]:y[m]:yp[rad]:E[GeV]"')
         else:
             raise ValueError("Userfile must be 1, 2, 3 or 4")  # keep the original gausstwiss beam
 
         return -(twiss_file.iloc[idx_start-1]['S']-twiss_file.iloc[idx_IP]['S'])
-
-    def convert_hepevt(self):
-        infile = f"output_{self._seed}.root"
-        outfile = f"output_{self._seed}.hepevt"
-
-        # Read the dist file
-        d = pybdsim.Data.Load(infile)
-        part2 = pybdsim.Data.SamplerData(d, -1) # Only one sampler, hence take the last one, 0 is the initial positron disitribution
-        part = pd.DataFrame([part2.data['x'], part2.data['xp'], part2.data['y'], part2.data['yp'], part2.data['energy'], part2.data['p'], part2.data['zp'],
-        part2.data['T'], part2.data['partID'], part2.data['mass']]).T
-        part.columns = ['x', 'xp', 'y', 'yp', 'E', 'p', 'zp', 't', 'partID', 'm']
-        part['r'] = np.sqrt(part['x']**2 + part['y']**2)
-        part['rp'] = np.sqrt((part['x']+part['xp']*(2.2+6))**2 + (part['y']+part['yp']*(2.2+6))**2)
-        # Filtering
-        # in energy > 2keV 
-        # in radius removing photons beyond R=15mm
-        # removing all photons R<9mm 8.2m downstream the sampler equivalent to s=+6.0m
-        part = part[(part['partID']==22)&(part['E']>2e-6)&(part['r']<18e-3)&(part['rp']>9e-3)]
-        part.reset_index(drop=True, inplace=True)
-        result = part
-        # Creating file in hepevt format following https://hugonweb.com/hepevt/
-        # Loop through the photons and add each to a new vertex
-        f = open(outfile, "w")
-        lines = [
-                # Write total number of events in the file
-                f'{len(result)}\n'
-            ]
-        f.writelines(lines)
-
-        for i in range(len(result)):
-            # Conversion from sampler units to hepevt units
-            # 'time' is in ns AT THE SAMPLER, converted to mm/c w.r.t. the IP
-            # 'p' is in GeV/c
-            # 'E' is in GeV
-            # 'xp', 'yp', 'zp' are in fractional part of the momentum p, convert to GeV/c
-            # 'x', 'y' are in m, convert to mm
-            # z is -2.2m, location of the sampler
-            partID = result.iloc[i]['partID']
-            px, py, pz, E = result.iloc[i]['xp']*result.iloc[i]['p'], result.iloc[i]['yp']*result.iloc[i]['p'], result.iloc[i]['zp']*result.iloc[i]['p'], result.iloc[i]['E']
-            x, y, z, t = 1e3*result.iloc[i]['x'], 1e3*result.iloc[i]['y'], -2.2e3, 1e3*(result.iloc[i]['t']*1e-9*2.997924588e8-(d.model['QC1L12']['SEnd']+2.4))
-
-            lines = [
-                # Create an active photon particle (PDG ID for photon is 22)
-                # <Status> <PDG ID> <1st Mother> <2nd Mother> <1st Daughter> <2nd Daughter> <Px> <Py> <Px> <E> <Mass> <x> <y> <z> <t>
-                # where Px/Py/Pz are in GeV/c, E is in GeV, and M is in GeV/c^2. x/y/z are in mm and t is in mm/c
-                f'1 {partID} 0 0 0 0 {px} {py} {pz} {E} {0} {x} {y} {z} {t}\n'
-            ]
-            f.writelines(lines)
-        f.close()
-
 
     def runBDSIM(self):
         """
@@ -693,42 +661,3 @@ class MDIStudy:
         pybdsim.Run.Bdsim('GMAD/input.gmad', outfile, ngenerate=self._ngenerate, options=runOptions, batch=True)
 
 
-
-
-
-if __name__ == "__main__":
-    # Parse command-line arguments for xweight and yweight
-    parser = argparse.ArgumentParser(description="Run MDIStudy with varying xweight and yweight.")
-    parser.add_argument("--ngenerate", type=int, help="Number of particles", default=5000)
-    parser.add_argument("--userfile", type=int, help="1--> beam core simulation; 2--> beam halo simulation; 3--> beam halo with exponential density", default=1)
-    parser.add_argument("--roundmask", type=float, help="1-->round mask 7mm; 2-->elliptical mask 7x8.5; else-->jaw mask", default=3)
-    parser.add_argument("--xtail", type=int, help="Horizontal halo width in sigma", default=10)
-    parser.add_argument("--ytail", type=int, help="Vertical halo width in sigma", default=51)
-    parser.add_argument("--xweight", type=float, help="X-weight value", default=1.2)
-    parser.add_argument("--yweight", type=float, help="Y-weight value", default=0.06)
-    parser.add_argument("--withDip", type=int, help="Add post IP dipoles")
-    parser.add_argument("--seed", type=int, help="Seed number", default=123)
-    parser.add_argument("--withSol", type=int, help="1-->Including solenoid 0-->Without solenoid", default=0)
-    parser.add_argument("--withCorr", type=int, help="1-->Including correction 0-->No correction", default=0)
-    parser.add_argument("--cfg", type=Path, help="Optional JSON config file")
-
-    # two-pass parse: first read --cfg if present
-    pre = argparse.ArgumentParser(add_help=False)
-    pre.add_argument("--cfg", type=Path)
-    ns_pre, _ = pre.parse_known_args(sys.argv)
-
-    if ns_pre.cfg:
-        print("Loading args from JSON file\n")
-        cfg = json.loads(ns_pre.cfg.read_text())
-        parser.set_defaults(**cfg)
-    
-    args = parser.parse_args()
-
-
-
-    # Create an MDIStudy instance including the specified beam halo xweight and yweight
-    mdi_study = MDIStudy(seed=args.seed, withSol=0, withCorr=0, ngenerate=args.ngenerate, withDip=True, maskA=[15e-3, 15e-3, 7e-3, 8.5e-3], userfile=args.userfile, roundmask=args.roundmask, xtail=args.xtail, ytail=args.ytail, xweight=args.xweight, yweight=args.yweight)
-    # Generate the BDSIM model
-    mdi_study.genGMAD()
-    mdi_study.runBDSIM()
-    mdi_study.convert_hepevt()

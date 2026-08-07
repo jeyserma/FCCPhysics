@@ -1,0 +1,82 @@
+#!/bin/bash
+
+USERFILE=3 ( for a weighted halo or 2 for a uniform halo)
+ROUNDMASK= 3 ( for a mask with jaws)
+WITHSOL= 0 ( No solenoid field map)
+WITHCORR= 0 (No solenoid field map correction)
+XWEIGHT=1.2 (for a 5 minutes lifetime)
+YWEIGHT=0.06 (for a 5 minutes lifetime)
+XTAIL=10 (in sigma is the primary collimator cut in the horizontal plane)
+YTAIL=51 (in sigma is the primary collimator cut in the vertical plane)
+
+
+bdsim  --file=${PWD}/GMAD/input.gmad --outfile=123_raw --seed=123 --ngenerate=5000
+
+# environment - bdsim, root, geant4 etc
+source /cvmfs/beam-physics.cern.ch/bdsim/x86_64-el9-gcc13-opt/bdsim-env-v1.7.7-g4v10.7.2.3-ftfp-boost.sh
+
+# extracting arguments
+INPUTFILE=$1
+OUTPUTDIR=$2
+SEEDVALUE=$3
+ANALFILE=$4
+NGENERATE=$5
+INPUTDIR=$6
+BASEDIR=$7
+USERFILE=$8
+ROUNDMASK=$9
+XWEIGHT=${10}
+YWEIGHT=${11}
+XTAIL=${12}
+YTAIL=${13}
+
+echo "input file         = "${INPUTFILE}
+echo "output dir         = "${OUTPUTDIR}
+echo "anafile1           = "${ANAFILE1}
+echo "ngenerate          = "${NGENERATE}
+echo "seed value         = "${SEEDVALUE}
+echo "input dir          = "${INPUTDIR}
+echo "base dir           = "${BASEDIR}
+echo "userfile           = "${USERFILE}
+echo "mask type          = "${ROUNDMASK}
+echo "horizontal weight  = "${XWEIGHT}
+echo "vertical weight    = "${YWEIGHT}
+echo "horizontal widht   = "${XTAIL}
+echo "vertical width     = "${YTAIL}
+
+date
+echo ""
+hostname
+echo ""
+
+ls
+
+# run python
+python3 ${PWD}/run_taildet_study.py --seed=${SEEDVALUE} --ngenerate=${NGENERATE} --userfile=${USERFILE} --roundmask=${ROUNDMASK} --xtail=${XTAIL} --ytail=${YTAIL} --xweight=${XWEIGHT} --yweight=${YWEIGHT}
+echo "Python job finished the GMAD input files have been created"
+date
+
+# run bdsim
+# a common trick is to use the seed value as the output file name so we know what it was easily
+bdsim  --file=${PWD}/GMAD/input.gmad --outfile=${SEEDVALUE}_raw --seed=${SEEDVALUE} --ngenerate=${NGENERATE}
+echo "bdsim finished"
+date
+
+# run python postprocessing
+# a common trick is to use the seed value as the output file name so we know what it was easily
+python3 ${PWD}/process_file.py --filepath=${PWD} --seed=${SEEDVALUE}
+echo "postprocessing finished"
+date
+
+# copy generated output to desired output directory
+cp *raw.root ${OUTPUTDIR}/.
+mv photons_${SEEDVALUE}.hepevt ${OUTPUTDIR}/.
+# move the beam input file to the output directory for postprocessing purposes
+mv GMAD/inputfile.dat ${OUTPUTDIR}/beam${SEEDVALUE}.dat
+
+if [ $? != 0 ]; then
+    echo "copy failed"
+fi
+
+# clean up
+rm *.root
