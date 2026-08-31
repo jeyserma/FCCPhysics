@@ -15,9 +15,10 @@ logger.setLevel(logging.INFO)
 parser = argparse.ArgumentParser()
 parser.add_argument("--submit", action='store_true', help="Submit to batch system")
 parser.add_argument("--dryrun", action='store_true', help="dry run")
+parser.add_argument("--weightcalc", action='store_true', help="report how many files are needed for weight 1 for the given runconfig, then exit")
 
 parser.add_argument("--njobs", type=int, help="number of jobs", default=10)
-parser.add_argument("--ngenerate", type=int, help="number of events", default=200000)
+parser.add_argument("--ngenerate", type=int, help="override the ngenerate from config/<lattice>/sample_config.py", default=None)
 parser.add_argument("--lattice", type=str, help="Lattice", default="LCC_v1")
 parser.add_argument("--runconfig", type=str, help="Config run file", default="halo")
 
@@ -55,6 +56,55 @@ def chunk_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
+def weight_calc(args):
+    """
+    How many files are needed for weight = 1, i.e. one full bunch, for the given
+    runconfig. Reports what is already on disk and what is still missing.
+
+        weight = chargeFraction * bunchIntensity / (nfiles * ngenerate)
+    """
+    configdir = os.path.join(os.getcwd(), "config", args.lattice)
+    sys.path.insert(0, configdir)
+    try:
+        import sample_config
+    except ImportError:
+        logger.error(f"No sample_config.py in {configdir}")
+        return
+
+    if args.runconfig not in sample_config.CHARGE_FRACTION:
+        logger.error(f"Unknown runconfig '{args.runconfig}'; sample_config.py knows "
+                     f"{sorted(sample_config.CHARGE_FRACTION)}")
+        return
+
+    fraction = sample_config.CHARGE_FRACTION[args.runconfig]
+    intensity = sample_config.BUNCH_INTENSITY
+    ngenerate = args.ngenerate or sample_config.NGENERATE[args.runconfig]
+
+    particles = fraction * intensity          # positrons in one bunch for this sample
+    nfiles = particles / ngenerate            # files needed for weight 1
+
+    suffix = f"_{args.suffix}" if args.suffix else ""
+    outdir = f"{args.storagedir}/{args.lattice}_{args.runconfig}{suffix}/"
+    existing = len(glob.glob(os.path.join(outdir, "output_*_edm4hep.root")))
+    if existing == 0:   # fall back to the v1 naming
+        existing = len(glob.glob(os.path.join(outdir, "output_*.hepevt")))
+
+    print(f"\n{args.lattice} / {args.runconfig}")
+    print(f"  bunch intensity        {intensity:.4g}")
+    print(f"  charge fraction        {fraction:g}")
+    print(f"  particles in one bunch {particles:.4g}")
+    print(f"  ngenerate per file     {ngenerate}")
+    print(f"  --> files for weight 1 {nfiles:,.0f}")
+    print(f"\n  {outdir}")
+    print(f"  existing files         {existing:,}")
+    if existing:
+        print(f"  current weight         {particles / (existing * ngenerate):.6g}")
+        print(f"  still needed           {max(0, nfiles - existing):,.0f}")
+    else:
+        print(f"  still needed           {nfiles:,.0f}")
+    print()
+
+
 
 class BDSIMProducer:
 
@@ -63,7 +113,9 @@ class BDSIMProducer:
         self.cwd = os.getcwd()
 
         self.njobs = args.njobs
-        self.ngenerate = args.ngenerate
+        # ngenerate lives in config/<lattice>/sample_config.py; only passed on the
+        # command line when explicitly overridden (handy for short test runs)
+        self.ngenerate_arg = f"--ngenerate={args.ngenerate}" if args.ngenerate else ""
 
         self.lattice = args.lattice
         self.runconfig = args.runconfig
@@ -85,13 +137,14 @@ class BDSIMProducer:
         os.system(f"tar -cvf {self.sandbox} -C {self.configdir} .")
 
         self.transfer_input_files = ['sandbox.tar']
-        self.transfer_output_files  = ['output_$(SEED).hepevt']
+        self.output_pattern = 'output_$(SEED)_edm4hep.root'   # was output_$(SEED).hepevt in v1
+        self.transfer_output_files  = [self.output_pattern]
 
         njob = 0
         self.seeds = []
         while njob < self.njobs:
             seed = f"{random.randint(100000,999999)}"
-            outputFile = f"{self.outdir}/output_{seed}.hepevt"
+            outputFile = os.path.join(self.outdir, self.output_pattern.replace("$(SEED)", seed))
             if os.path.exists(outputFile):
                 logger.warning(f"Output file with seed {seed} already exists, skipping")
                 continue
@@ -105,15 +158,14 @@ class BDSIMProducer:
             #!/bin/bash
             set -euo pipefail
 
-            if [ $# -lt 2 ]; then
-                echo "Usage: $0 SEED NGENERATE" >&2
+            if [ $# -lt 1 ]; then
+                echo "Usage: $0 SEED" >&2
                 exit 1
             fi
 
             seed="$1"
-            ngenerate="$2"   # total number of events
             echo $seed
-            echo $ngenerate
+            # ngenerate comes from config/{self.lattice}/sample_config.py
 
             echo "Release:"
             cat /proc/version
@@ -151,7 +203,7 @@ class BDSIMProducer:
             SECONDS=0
 
             echo "Running generation"
-            python "run_{runconfig}.py" --seed="$seed" --ngenerate="$ngenerate"
+            python "run_{runconfig}.py" --seed="$seed" {self.ngenerate_arg}
 
             if [ ! -f "output_${{seed}}.root" ]; then
                 echo "ERROR: Generation did not produce output_${{seed}}.root" >&2
@@ -162,10 +214,11 @@ class BDSIMProducer:
             gen_duration=$SECONDS
 
             echo "Running conversion"
-            python convert.py --input "output_${{seed}}.root"
+            #python convert.py --input "output_${{seed}}.root"
+            bash convert.sh "${{seed}}" {runconfig}
 
-            if [ ! -f "output_${{seed}}.hepevt" ]; then
-                echo "ERROR: Conversion did not produce output_${{seed}}.hepevt" >&2
+            if [ ! -f "output_${{seed}}_edm4hep.root" ]; then
+                echo "ERROR: Conversion did not produce output_${{seed}}_edm4hep.root" >&2
                 exit 1
             fi
 
@@ -203,7 +256,7 @@ class BDSIMProducer:
             fOut.write(f'universe       = vanilla\n')
             fOut.write(f'initialdir     = {self.outdir}\n')
             fOut.write(f'executable     = {submitFn}\n')
-            fOut.write(f'arguments      = $(SEED) {self.ngenerate}\n')
+            fOut.write(f'arguments      = $(SEED)\n')
 
             fOut.write(f'Log            = {logdir}/condor_job.$(ClusterId).$(ProcId).log\n')
             fOut.write(f'Output         = {logdir}/condor_job.$(ClusterId).$(ProcId).out\n')
@@ -310,10 +363,14 @@ class BDSIMProducer:
         script_sandbox = self.make_script(self.runconfig)
         with open(f"{rundir}/run.sh", "w") as tf:
             tf.write(script_sandbox)
-        subprocess.run(["bash", "run.sh", "12345", f"{self.args.ngenerate}"], cwd=rundir)
+        subprocess.run(["bash", "run.sh", "12345"], cwd=rundir)
 
 
 def main():
+    if args.weightcalc:   # query only: no sandbox, no output directory
+        weight_calc(args)
+        return
+
     producer = BDSIMProducer(args)
     if args.submit:
         producer.generate_submit()
