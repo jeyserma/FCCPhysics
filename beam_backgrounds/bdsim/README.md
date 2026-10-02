@@ -7,8 +7,8 @@ sampler 2.4 m before the IP; those photons are the input to ddsim.
 Lattice: LCC_v1 (corresponds to LCC V106.2).
 
 ```bash
-# how many files are needed for weight 1? (query only, submits nothing)
-python submit.py --weightcalc --lattice LCC_v2 --runconfig halo
+# report on a sample: files, size, weight, what is still missing (submits nothing)
+python submit.py --analysis --lattice LCC_v2 --runconfig halo
 
 # dry run (one job, locally, in /tmp/bdsim/<lattice>/<runconfig>/)
 python submit.py --dryrun --lattice LCC_v2 --runconfig halo
@@ -19,9 +19,8 @@ python submit.py --submit --cms_pool --lattice LCC_v2 --runconfig halo --njobs 2
 
 Output goes to `<storagedir>/<lattice>_<runconfig>/`.
 
-`--weightcalc` reads `sample_config.py`, counts what is already on disk, and
-reports the weight that set currently gives plus how many files are still
-missing for weight 1:
+`--analysis` reads `sample_config.py`, counts and sizes what is already on disk,
+and reports the weight that set currently gives plus what completing it costs:
 
 ```
 LCC_v2 / halo
@@ -29,15 +28,25 @@ LCC_v2 / halo
   charge fraction        0.01
   particles in one bunch 2.02e+09
   ngenerate per file     500000
-  --> files for weight 1 4,040
-  ...
-  existing files         100
-  current weight         40.4
-  still needed           3,940
+
+  /ceph/.../LCC_v2_halo/
+  files                  4133
+  total size             21.18 GB
+  mean file size         5.50 MB
+  primaries simulated    2.066e+09
+  current weight         0.977498
+
+  files for weight 1     4040
+  still needed           0
+  size at weight 1       20.7 GB
 ```
 
+It only stats the files, so it needs no key4hep and stays fast on a directory of
+any size — which also means the primary count assumes every file used the
+`ngenerate` it reports.
+
 `--ngenerate N` overrides `sample_config.py` — useful with `--dryrun` for a
-short test run, and with `--weightcalc` to see what a different job size implies.
+short test run, and with `--analysis` to see what a different job size implies.
 
 > `--dryrun` exits 0 even when the job script fails — `dryrun()` does not check
 > `subprocess.run`'s return value. Read the log, not the exit code.
@@ -47,7 +56,7 @@ short test run, and with `--weightcalc` to see what a different job size implies
 | | |
 |---|---|
 | `config/LCC_v1` | the original. Writes HEPEvt text. Kept to reproduce the 2026 campaign. |
-| `config/LCC_v2` | **use this.** Fixed halo sampler and energy spread, writes EDM4hep. See `config/LCC_v2/README.md` for the full changelog and the measured job sizing. |
+| `config/LCC_v2` | **use this.** Fixed halo sampler, writes EDM4hep. The beam differs from v1 by the sampling method *only* — the energy-spread and dispersion bugs are documented but deliberately left in place (sections 2 and 3 of its README). |
 
 ## Two stacks per job
 
@@ -70,7 +79,7 @@ leaks into key4hep's 3.13 and the job dies with
 ```python
 BUNCH_INTENSITY = 2.02e11
 CHARGE_FRACTION = {"halo": 0.01, "core": 0.99}
-NGENERATE       = {"halo": 500000, "core": 500000}
+NGENERATE       = {"halo": 500000, "core": 1000000}
 EVENTS_PER_FILE = 1
 ```
 
@@ -110,3 +119,10 @@ section 7 of `config/LCC_v2/README.md`:
 - no solenoid, no orbit correctors
 - multipoles zeroed (`linear=True`)
 - no grazing-incidence X-ray reflection
+
+And two known bugs in the halo beam, left in place on purpose so that v2 isolates
+the sampler change — sections 2 and 3 of `config/LCC_v2/README.md`, with the fix
+written out as a comment in `generate_4d_distribution`:
+
+- energy spread is 1 MeV instead of 45.6 MeV (`sigma_delta` 2.2e-5, not 1e-3)
+- the dispersive orbit `D*delta` is never added to the halo coordinates

@@ -1,7 +1,5 @@
 """
 Create the GMAD input files for BDSIM from MAD-X Twiss output files in tfs format.
-
-LCC_v2 -- see README.md for the list of changes with respect to LCC_v1.
 """
 
 import numpy as np
@@ -15,140 +13,76 @@ from mpl_toolkits.axes_grid1 import host_subplot, make_axes_locatable
 from pathlib import Path
 import re
 
-TWISS_FILE = "GMAD/fcc_ee_z_b1_twiss_end.tfs"
-
-
-def read_tfs_header(tfs_file=TWISS_FILE, keys=("EX", "EY", "SIGE", "ENERGY")):
-    """
-    Read the @-parameters of a MAD-X tfs file, e.g.
-
-        @ EX               %le    0.000000000700000
-
-    Returns a dict {key: float}. Used so that the emittances and the energy
-    spread of the halo distribution always follow the TWISS file that is
-    actually being converted, instead of being hardcoded (LCC_v1 hardcoded
-    emitx=0.7e-9 and emity=2.6e-12, which happened to match this lattice).
-    """
-    out = {k: None for k in keys}
-    with open(tfs_file) as f:
-        for line in f:
-            if line.startswith("*"):   # start of the column definitions
-                break
-            if not line.startswith("@"):
-                continue
-            fields = line.split()
-            if len(fields) >= 4 and fields[1] in out:
-                out[fields[1]] = float(fields[3])
-    missing = [k for k, v in out.items() if v is None]
-    if missing:
-        raise ValueError(f"Could not read {missing} from the TWISS header of {tfs_file}")
-    return out
-
-
-def truncated_exponential(rng, size, scale, lo, hi):
-    """
-    Draw `size` values from p(J) ~ exp(-J/scale) restricted to [lo, hi], by
-    inverting the CDF. Exact, one uniform random number per particle, no
-    rejection and no resampling -- every draw is an independent point.
-    """
-    u = rng.uniform(size=size)
-    a, b = np.exp(-lo/scale), np.exp(-hi/scale)
-    return -scale*np.log(a - u*(a - b))
-
-
-def generate_4d_distribution(self, twiss_file, idx_start, tfs_file=TWISS_FILE):
-    """
-    Generate the beam-halo distribution at the entrance of the tracked beamline
-    (the TWISS row before idx_start, i.e. the optics at the start of the first
-    tracked element).
-
-    Model -- unchanged with respect to LCC_v1: an exponential tail in the
-    Courant-Snyder invariant (the "action" J) of each plane, cut to the region
-    between an inner and an outer amplitude,
-
-        p(Jx) ~ exp(-Jx/scale_x)  on [ (3.5 sigma_x)^2 , (xtail sigma_x)^2 ]
-        p(Jy) ~ exp(-Jy/scale_y)  on [ (4.0 sigma_y)^2 , (ytail sigma_y)^2 ]
-
-    with scale_x = (3.5^2 emitx)/xweight and scale_y = (4^2 emity)/yweight, so
-    that xweight/yweight set the tail slope relative to the inner cut. Smaller
-    weight = longer tail. For reference, a Gaussian beam has scale = 2*emit.
-
-    Method -- changed with respect to LCC_v1. v1 threw 250*ngenerate uniform
-    points in a 4-D box, kept the ~0.4% inside the annulus, and drew ngenerate
-    of them with replacement with probability proportional to exp(...). Because
-    the box extends to ytail=513 sigma_y while the vertical weight scale is only
-    ~16 sigma_y, the weights were so concentrated that 200000 macroparticles
-    contained only ~1069 distinct phase-space points (Kish effective sample size
-    ~71) and needed a 3.2 GB peak RSS. Sampling the truncated exponential
-    directly by inverting its CDF gives the identical distribution with
-    ngenerate distinct particles, one random number each. See README.md.
-    """
-    rng = np.random.default_rng(self._seed)
+def generate_4d_distribution(self, twiss_file, idx_start):
+    np.random.seed(self._seed)
     size = self._ngenerate
+    alfx=twiss_file.iloc[idx_start-1]['ALFX'] #50.02904476961108
+    alfy=twiss_file.iloc[idx_start-1]['ALFY']
+    betx=twiss_file.iloc[idx_start-1]['BETX'] #7861.70688987599
+    bety=twiss_file.iloc[idx_start-1]['BETY'] #285.5641279561109
+    emitx = 0.7e-9
+    emity = 2.6e-12
+    gammax = (1.0 + alfx * alfx) / betx
+    gammay = (1.0 + alfy * alfy) / bety
 
-    row = twiss_file.iloc[idx_start-1]
-    alfx, alfy = row['ALFX'], row['ALFY']
-    betx, bety = row['BETX'], row['BETY']
-    dispx, dispxp = row['DX'], row['DPX']
+    haloNSigmaXInner = 3.5
+    haloNSigmaXOuter = self._xtail
+    haloNSigmaYInner = 4
+    haloNSigmaYOuter = self._ytail
 
-    header = read_tfs_header(tfs_file)
-    emitx, emity = header['EX'], header['EY']
-    sigmaE, energy = header['SIGE'], header['ENERGY']
+    sigmaX     = np.sqrt(emitx * betx)
+    sigmaY     = np.sqrt(emity * bety)
+    sigmaXp    = np.sqrt(gammax * emitx)
+    sigmaYp    = np.sqrt(gammay * emity)
 
-    haloNSigmaXInner, haloNSigmaXOuter = 3.5, self._xtail
-    haloNSigmaYInner, haloNSigmaYOuter = 4.0, self._ytail
+    emitInnerX = haloNSigmaXInner**2 * emitx
+    emitInnerY = haloNSigmaYInner**2 * emity
+    emitOuterX = haloNSigmaXOuter**2 * emitx
+    emitOuterY = haloNSigmaYOuter**2 * emity
 
-    # amplitude (action) limits of the sampled annulus, in metre-radian
-    JxLo, JxHi = haloNSigmaXInner**2 * emitx, haloNSigmaXOuter**2 * emitx
-    JyLo, JyHi = haloNSigmaYInner**2 * emity, haloNSigmaYOuter**2 * emity
+    xMax  = haloNSigmaXOuter * sigmaX
+    yMax  = haloNSigmaYOuter * sigmaY
+    xpMax = haloNSigmaXOuter * sigmaXp
+    ypMax = haloNSigmaYOuter * sigmaYp
 
-    # tail slopes, defined relative to the inner cut (as in LCC_v1)
-    scaleX = JxLo / self._xweight
-    scaleY = JyLo / self._yweight
+    # Generate random displacement values for x, y, dxp, and dyp
+    init_size = 250*size
+    dx = xMax * (1 - 2 * np.random.uniform(size=init_size))
+    dy = yMax * (1 - 2 * np.random.uniform(size=init_size))
+    dxp = xpMax * (1 - 2 * np.random.uniform(size=init_size))
+    dyp = ypMax * (1 - 2 * np.random.uniform(size=init_size))
 
-    Jx = truncated_exponential(rng, size, scaleX, JxLo, JxHi)
-    Jy = truncated_exponential(rng, size, scaleY, JyLo, JyHi)
+    # Calculate beam parameters for x and y directions
+    emitXSp = gammax * dx**2 + 2. * alfx * dx * dxp + betx * dxp**2
+    emitYSp = gammay * dy**2 + 2. * alfy * dy * dyp + bety * dyp**2
 
-    # uniform betatron phase, then the Courant-Snyder transform back to (x, x'),
-    # which satisfies gamma*x^2 + 2*alfa*x*x' + beta*x'^2 = J by construction
-    phix = rng.uniform(0.0, 2.0*np.pi, size=size)
-    phiy = rng.uniform(0.0, 2.0*np.pi, size=size)
+    # Calculate exponential weights
+    exp_weights = np.exp(- self._xweight * emitXSp / emitInnerX - self._yweight * emitYSp / emitInnerY)
 
-    sampled_dx  = np.sqrt(Jx*betx)*np.cos(phix)
-    sampled_dxp = -np.sqrt(Jx/betx)*(alfx*np.cos(phix) + np.sin(phix))
-    sampled_dy  = np.sqrt(Jy*bety)*np.cos(phiy)
-    sampled_dyp = -np.sqrt(Jy/bety)*(alfy*np.cos(phiy) + np.sin(phiy))
+    # Apply the condition to filter based on emitXSp and emitYSp ranges
+    condition = (
+        (abs(emitXSp) > emitInnerX) &
+        (abs(emitYSp) > emitInnerY) &
+        (abs(emitXSp) < emitOuterX) &
+        (abs(emitYSp) < emitOuterY)
+    )
 
-    # ------------------------------------------------------------------
-    # ENERGY SPREAD AND DISPERSION: deliberately left at the LCC_v1 values,
-    # so that LCC_v2 differs from LCC_v1 in the sampling method ALONE and the
-    # effect of that change can be measured on its own. Both are known to be
-    # wrong -- see README.md sections 2 and 3 for the full analysis.
-    #
-    #   * SIGE in the TWISS header is dE/E, so the absolute spread should be
-    #     SIGE * ENERGY = 45.6 MeV. The line below uses 1.0 MeV, i.e.
-    #     sigma_delta = 2.2e-5 instead of 1.0e-3, a factor 45.6 too small.
-    #
-    #   * BDSIM applies "userfile" coordinates literally and never adds the
-    #     dispersive orbit (dispx/dispxp in the beam block are used only by
-    #     gausstwiss), so x should get + dispx*delta and xp + dispxp*delta.
-    #     It does not here.
-    #
-    # The two belong together: with sigma_delta = 2.2e-5 the dispersive offset
-    # is 7.7 um instead of 349 um, i.e. invisible next to the 813 um betatron
-    # sigma_x. Fixing either alone changes nothing measurable.
-    #
-    # To restore the physics, replace the single line below with:
-    #
-    #     delta = rng.normal(0.0, sigmaE, size=size)
-    #     sampled_dx  = sampled_dx  + dispx*delta
-    #     sampled_dxp = sampled_dxp + dispxp*delta
-    #     sampled_E   = energy*(1.0 + delta)
-    #
-    # sigmaE, energy, dispx and dispxp are read above purely so that this is a
-    # copy-paste change.
-    # ------------------------------------------------------------------
-    sampled_E = rng.normal(45.6, 1.0e-3, size=size)   # LCC_v1 behaviour, see above
+    valid_indices = np.where(condition)[0]
+
+    normalised_exp_weight = exp_weights[valid_indices]/sum(exp_weights[valid_indices])
+
+    # Sample random values based on the normalized exponential weights and the condition
+    sampled_indices = []
+
+    while len(sampled_indices) < size:
+        sampled_indices.extend(np.random.choice(valid_indices, size=size - len(sampled_indices), replace=True, p=normalised_exp_weight))
+
+    sampled_indices = np.array(sampled_indices)
+    sampled_dx = dx[sampled_indices]
+    sampled_dxp = dxp[sampled_indices]
+    sampled_dy = dy[sampled_indices]
+    sampled_dyp = dyp[sampled_indices]
+    sampled_E = np.random.normal(45.6, 1.0e-3, size=size)
 
     return sampled_dx, sampled_dxp, sampled_dy, sampled_dyp, sampled_E
 
@@ -281,10 +215,10 @@ class MDIStudy:
         MADX_TWISS_HEADERS_SKIP_ROWS = 50
         MADX_TWISS_DATA_SKIP_ROWS = 52
         
-        headers = pd.read_csv(TWISS_FILE, skiprows=MADX_TWISS_HEADERS_SKIP_ROWS,
+        headers = pd.read_csv('GMAD/fcc_ee_z_b1_twiss_end.tfs', skiprows=MADX_TWISS_HEADERS_SKIP_ROWS,
                         nrows=0, sep=r"\s+")        
         headers.drop(headers.columns[[0, 1]], inplace=True, axis=1)
-        twiss_file = pd.read_csv(TWISS_FILE,
+        twiss_file = pd.read_csv('GMAD/fcc_ee_z_b1_twiss_end.tfs',
                          header=None,
                          names=headers.columns.values,
                          na_filter=False,
@@ -307,11 +241,6 @@ class MDIStudy:
 
         # Find the first dipole AFTER the IP to start the sequence conversion
         # Can be adapted to get any dipole after the IP to have a longer beam line
-        # WARNING: idx_stop computed here is overwritten further down with
-        # idx(QD0AL)+1, so the beamline always ends 2.4 m before the IP and
-        # withDip currently has NO effect. Everything downstream of QD0AL
-        # (MASK_QC1L, DRIFT_L0/L1, DRIFT_SOL, DRIFT_R1) is therefore defined in
-        # input_components.gmad but never placed in the sequence. See README.md.
         found, idx_stop = 0, idx_IP
         while found<self._withDip:
             if twiss_file.iloc[idx_stop]['KEYWORD'] == "RBEND":
@@ -404,7 +333,7 @@ class MDIStudy:
             idx_B0BL = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="B0BL"].index[0]
             idx_start = idx_B0BL
 
-        a, b = pybdsim.Convert.MadxTfs2Gmad(TWISS_FILE,
+        a, b = pybdsim.Convert.MadxTfs2Gmad("GMAD/fcc_ee_z_b1_twiss_end.tfs",
                                             "GMAD/input",
                                             linear = True,
                                             #aperturedict = ap,
@@ -554,11 +483,8 @@ class MDIStudy:
                 'tunnelSoilThickness=2,\n',
                 'tunnelVisible=0,\n',
                 'tunnelIsInfiniteAbsorber=1;\n',
-                # NB: in LCC_v1 the two lines below were missing the separating
-                # commas and were silently concatenated into a single string.
-                # The resulting GMAD was still valid, but only by accident.
-                'option, samplerDiameter=36*mm;\n',
-                'sample, range=QD0AL, partID={22};\n',
+                'option, samplerDiameter=36*mm;'
+                'sample, range=QD0AL, partID={22};'
                 ]
         with open("GMAD/input_options.gmad", "w") as file:
             file.writelines(lines)
@@ -619,15 +545,17 @@ class MDIStudy:
             print("Modifying GMAD beam input file\n")
             with open("GMAD/input_beam.gmad", "r") as file:
                 text= file.readlines()
-            # Match whatever number pybdsim wrote rather than the literal "0.0":
-            # it writes e.g. "Xp0=-0.0", so the LCC_v1 string replace for Xp0
-            # never fired and the XP0 argument was silently ignored.
-            for i, line in enumerate(text):
-                line = re.sub(r'X0=[-+0-9.eE]+\*m', f'X0={self._X0}*m', line)
-                line = re.sub(r'Y0=[-+0-9.eE]+\*m', f'Y0={self._Y0}*m', line)
-                line = re.sub(r'Xp0=[-+0-9.eE]+', f'Xp0={self._XP0}', line)
-                line = re.sub(r'Yp0=[-+0-9.eE]+', f'Yp0={self._YP0}', line)
-                text[i] = line
+            i = 0
+            while i<len(text):
+                if "X0" in text[i]:
+                    text[i] =text[i].replace("X0=0.0*m", f'X0={self._X0}*m')
+                if "Y0" in text[i]:
+                    text[i] =text[i].replace("Y0=0.0*m", f'Y0={self._Y0}*m')
+                if "Xp0" in text[i]:
+                    text[i] =text[i].replace("Xp0=0.0", f'Xp0={self._XP0}')
+                if "Yp0" in text[i]:
+                    text[i] =text[i].replace("Yp0=0.0", f'Yp0={self._YP0}')
+                i+=1
             with open("GMAD/input_beam.gmad", "w") as file:
                 file.writelines(text)
 

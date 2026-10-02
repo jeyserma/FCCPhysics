@@ -1,5 +1,5 @@
 #!/bin/bash
-# Conversion step of an LCC_v2 job: BDSIM ROOT -> EDM4hep.
+# Conversion step of an LCC_v1p1 job: BDSIM ROOT -> EDM4hep.
 #
 #     bash convert.sh <seed> <runconfig> [collection]
 #

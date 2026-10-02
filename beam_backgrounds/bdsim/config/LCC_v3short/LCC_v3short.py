@@ -17,6 +17,23 @@ import re
 
 TWISS_FILE = "GMAD/fcc_ee_z_b1_twiss_end.tfs"
 
+# Where the short line begins. The halo is generated directly here, using the
+# TWISS at this point, instead of being tracked 282 m from B0DL.
+#
+# This is exact for the positrons, not an approximation: the Courant-Snyder
+# action is invariant under the (linear, lossless) transport of those 282 m, and
+# the quantum-lifetime tail is a ring-wide property rather than something that
+# develops along the way. Verified on a 60k stage-1 dump: no losses
+# (60000/60000 arrive), phases uniform at the split plane (chi2/ndf 1.34 in x,
+# 1.77 in y), and the fitted vertical tail scale is 0.0598 against the generated
+# yweight of 0.06.
+#
+# What it drops: the SR made in the 282 m of weak bends. Those photons top out
+# near 10 keV (Ec = 2.02 keV at B = 1.46 mT) and contribute 0 %% of the vertex
+# detector hits, which need hundreds of keV. So this config is exact for
+# DETECTOR backgrounds and wrong for the total photon flux at the sampler.
+SHORT_LINE_START = "QF1BL"
+
 
 def read_tfs_header(tfs_file=TWISS_FILE, keys=("EX", "EY", "SIGE", "ENERGY")):
     """
@@ -224,6 +241,9 @@ class MDIStudy:
 
         self._repo      = kwargs.get("repo", "DATA/")              # where the simulation outputs will be saved
 
+        # Start at SHORT_LINE_START instead of 289 m upstream. See the constant.
+        self._shortLine = kwargs.get("shortLine", True)
+
         self._optics    = kwargs.get('optics', False)
         self._traj      = kwargs.get('traj', False)
         self._bpabs     = kwargs.get('bpabs', False)
@@ -394,6 +414,17 @@ class MDIStudy:
 
         idx_QC1L1 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QD0AL"].index[0]
         idx_stop = idx_QC1L1 +1
+
+        if self._shortLine:
+            idx_start = twiss_file.reset_index()[
+                twiss_file.reset_index()['NAME'] == SHORT_LINE_START].index[0]
+            row = twiss_file.iloc[idx_start - 1]
+            print(f"SHORT LINE: generating the halo at {SHORT_LINE_START} "
+                  f"(s = {row['S']:.3f} m, z = {row['S'] - 913.9196581:.2f} m), "
+                  f"betx={row['BETX']:.1f} bety={row['BETY']:.1f}\n")
+            # generate_4d_distribution() reads the TWISS from iloc[idx_start-1],
+            # so moving idx_start is all that is needed -- it picks up the optics
+            # at the new injection point automatically.
 
         if self._userfile == 4:
             print("Using injection particles at FFQ, thus cutting the beamline before the FFQ\n")

@@ -17,6 +17,30 @@ import re
 
 TWISS_FILE = "GMAD/fcc_ee_z_b1_twiss_end.tfs"
 
+# Element at which the beamline is cut for the two-stage runs. Stage 1 ends
+# just before it, stage 2 starts at it, so there is no gap and no overlap.
+SPLIT_ELEMENT = "QF1BL"
+
+# Stage-2 beam file, written by make_stage2_input.py. BDSIM 1.7.7 accepts
+# pdgid and weight as columns (verified against libbdsim), which is what lets
+# a mixed-species dump be replayed. Weights are all 1.0 in the uniform
+# replication scheme -- the 1/N is absorbed into nPrimariesTotal instead, so
+# every downstream consumer keeps working with a single global weight.
+# One file per species, and stage 2 is run once per species.
+#
+# This is NOT cosmetic. BDSIM 1.7.7 converts the energy column using the
+# REFERENCE beam particle's mass, ignoring the per-line pdgid. With
+# beam particle e+ that silently drops every photon below 511 keV (with an
+# E column) or corrupts its energy (with an Ek column) -- verified by injecting
+# a decade scan and reading the sampler back. Splitting by species and setting
+# the reference particle to match makes the energies round-trip exactly.
+STAGE2_INPUT = {"e+": "stage2_input_ep.dat", "gamma": "stage2_input_gamma.dat"}
+
+# Ek, not E: the column is kinetic energy, which is what makes the photon
+# energies survive once the reference particle is right.
+STAGE2_FORMAT = "pdgid:x[m]:xp[rad]:y[m]:yp[rad]:Ek[GeV]:t[ns]:weight"
+
+
 
 def read_tfs_header(tfs_file=TWISS_FILE, keys=("EX", "EY", "SIGE", "ENERGY")):
     """
@@ -224,6 +248,16 @@ class MDIStudy:
 
         self._repo      = kwargs.get("repo", "DATA/")              # where the simulation outputs will be saved
 
+        # Two-stage ("dual sampling") support. 0 = single stage, identical to
+        # LCC_v2. 1 = track from the start of the tracked region up to the split
+        # element and sample everything crossing that plane. 2 = start at the
+        # split element, read that dump back as the beam, and track to QD0AL.
+        self._stage     = kwargs.get("stage", 0)
+        # Which species stage 2 injects: "e+" or "gamma". See STAGE2_INPUT.
+        self._stage2_species = kwargs.get("stage2_species", "e+")
+        # Strip the tunnel from the stage-2 model (see genGMAD). Stage 2 only.
+        self._slimGeometry = kwargs.get("slimGeometry", False)
+
         self._optics    = kwargs.get('optics', False)
         self._traj      = kwargs.get('traj', False)
         self._bpabs     = kwargs.get('bpabs', False)
@@ -395,6 +429,21 @@ class MDIStudy:
         idx_QC1L1 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QD0AL"].index[0]
         idx_stop = idx_QC1L1 +1
 
+        # --- two-stage split -------------------------------------------------
+        idx_split = twiss_file.reset_index()[
+            twiss_file.reset_index()['NAME'] == SPLIT_ELEMENT].index[0]
+        if self._stage == 1:
+            # stop just before the split element; the last element of the stage-1
+            # line is then the drift whose exit is the split plane, and that is
+            # where the sampler goes (see self._stage1_sampler below).
+            idx_stop = idx_split
+            self._stage1_sampler = twiss_file.iloc[idx_split - 1].name
+            print(f"STAGE 1: {twiss_file.iloc[idx_start].name} -> {SPLIT_ELEMENT} "
+                  f"(exclusive), sampling all species at '{self._stage1_sampler}'\n")
+        elif self._stage == 2:
+            idx_start = idx_split
+            print(f"STAGE 2: {SPLIT_ELEMENT} -> QD0AL, beam read from the stage-1 dump\n")
+
         if self._userfile == 4:
             print("Using injection particles at FFQ, thus cutting the beamline before the FFQ\n")
             idx_QC2L2 = twiss_file.reset_index()[twiss_file.reset_index()['NAME']=="QF1BL"].index[0]
@@ -483,7 +532,15 @@ class MDIStudy:
                 'apertureType="pointsfile:FCC_30mm.dat:mm",\n',
                 #'beampipeRadius=35e-3,\n'
                 'beampipeThickness=3e-3,\n',
-                'buildTunnel=1,\n',
+                # Stage 2 covers only the last 6.8 m and samples on-axis at QD0AL.
+                # The tunnel and its 2 m of soil are the single most expensive
+                # thing to navigate, and every injected particle pays that cost
+                # on entry. Dropping them for stage 2 is only safe if nothing
+                # scattering off the tunnel returns to the sampler -- validated
+                # in README section 9; DO NOT copy this to stage 1 or a
+                # single-stage run, where the tunnel matters.
+                ('buildTunnel=0,\n' if (self._stage == 2 and self._slimGeometry)
+                 else 'buildTunnel=1,\n'),
                 'tunnelOffsetX=-0.3,\n',
                 'tunnelOffsetY=-0.42,\n',
                 'tunnelAper1=2.75,\n',
@@ -513,7 +570,8 @@ class MDIStudy:
                 'apertureType="pointsfile:FCC_30mm.dat:mm",\n',
                 #'beampipeRadius=35e-3,\n'
                 'beampipeThickness=3e-3,\n',
-                'buildTunnel=1,\n',
+                ('buildTunnel=0,\n' if (self._stage == 2 and self._slimGeometry)
+                 else 'buildTunnel=1,\n'),
                 'tunnelOffsetX=-0.3,\n',
                 'tunnelOffsetY=-0.42,\n',
                 'tunnelAper1=2.75,\n',
@@ -545,7 +603,8 @@ class MDIStudy:
                 'apertureType="pointsfile:FCC_30mm.dat:mm",\n',
                 #'beampipeRadius=35e-3,\n',
                 'beampipeThickness=3e-3,\n',
-                'buildTunnel=1,\n',
+                ('buildTunnel=0,\n' if (self._stage == 2 and self._slimGeometry)
+                 else 'buildTunnel=1,\n'),
                 'tunnelOffsetX=-0.3,\n',
                 'tunnelOffsetY=-0.42,\n',
                 'tunnelAper1=2.75,\n',
@@ -557,8 +616,19 @@ class MDIStudy:
                 # NB: in LCC_v1 the two lines below were missing the separating
                 # commas and were silently concatenated into a single string.
                 # The resulting GMAD was still valid, but only by accident.
-                'option, samplerDiameter=36*mm;\n',
-                'sample, range=QD0AL, partID={22};\n',
+                # 36 mm matches the QD0AL sampler of LCC_v2, where the r < 18 mm
+                # acceptance cut is applied anyway. The STAGE-1 sampler must be
+                # much wider: it is a phase-space handoff, not an acceptance
+                # plane, and anything it fails to record is silently lost from
+                # the sample. At 36 mm the recorded photons pile up against
+                # |x| = 17.98 mm and the two-stage yield came out 6.5 % low.
+                ('option, samplerDiameter=500*mm;\n' if self._stage == 1
+                 else 'option, samplerDiameter=36*mm;\n'),
+                # Stage 1 samples EVERY species at the split plane -- the e+ that
+                # stage 2 will replay, and the photons and shower products already
+                # made upstream, which must be carried across or they are lost.
+                (f'sample, range={self._stage1_sampler};\n' if self._stage == 1
+                 else 'sample, range=QD0AL, partID={22};\n'),
                 ]
         with open("GMAD/input_options.gmad", "w") as file:
             file.writelines(lines)
@@ -615,7 +685,34 @@ class MDIStudy:
                     with open("GMAD/input_components.gmad", "a") as file:
                         file.write(f'MASK_QC1L: ecol, horizontalWidth=0.046, l=0.02, material="W", region="precisionRegion", xsize={self._maskA[2]}, ysize={self._maskA[3]};\n')
 
-        if self._userfile==1: # GAUSSTWISS BEAM
+        if self._stage == 2:
+            # STAGE 2 -- the beam is the stage-1 dump, replayed. Every species
+            # crossing the split plane is injected, so the photons and shower
+            # products already produced upstream are carried across rather than
+            # lost; pdgid carries the species and t the absolute arrival time, so
+            # the time reference at QD0AL stays that of the full beamline.
+            with open("GMAD/input_beam.gmad", "r") as file:
+                text = file.readlines()
+            for i, line in enumerate(text):
+                if "gausstwiss" in line:
+                    text[i] = line.replace("gausstwiss", "userfile")
+            with open("GMAD/input_beam.gmad", "w") as file:
+                file.writelines(text)
+            # Force the reference particle to the species being injected.
+            species = self._stage2_species
+            for i, line in enumerate(text):
+                if "particle" in line and "=" in line:
+                    text[i] = re.sub(r'particle\s*=\s*"[^"]*"',
+                                     f'particle="{species}"', text[i])
+            with open("GMAD/input_beam.gmad", "w") as file:
+                file.writelines(text)
+
+            add_before_last_semicolon("GMAD/input_beam.gmad",
+                                      f'\tdistrFile = "{STAGE2_INPUT[species]}"')
+            add_before_last_semicolon("GMAD/input_beam.gmad",
+                                      f'\tdistrFileFormat = "{STAGE2_FORMAT}"')
+
+        elif self._userfile==1: # GAUSSTWISS BEAM
             print("Modifying GMAD beam input file\n")
             with open("GMAD/input_beam.gmad", "r") as file:
                 text= file.readlines()
@@ -726,7 +823,9 @@ class MDIStudy:
         Runs BDSIM, must call genGMAD() before running (unless files are provided manually).
         If providing manually the main gmad must be in the directory as 'GMAD/input.gmad'.
         """
-        outfile = f"output_{self._seed}"
+        # runKey lets stage 2 write one file per species without a seed clash;
+        # it is "" everywhere else, so single-stage naming is unchanged.
+        outfile = f"output_{self._seed}{self._runKey}"
         runOptions = f"--seed={self._seed}"
 
         # run bdsim

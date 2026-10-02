@@ -125,7 +125,11 @@ def read_photons(rootfile):
 
     # time of the reference particle at the IP, in ns: it still has
     # (endS + 2.4) m to travel from the start of the beamline
-    t0_ns = (sampler_s_position(rootfile) - Z_SAMPLER_M) / C_M_PER_NS
+    # In LCC_v2multi the sampler sits in the 6.8 m stage-2 line, so the Model
+    # tree reports a small S. Stage-2 particles are injected carrying their
+    # absolute stage-1 arrival time (the t column), so the reference must still
+    # be the FULL beamline -- take it from sample_config, not from the file.
+    t0_ns = (sample_config.SAMPLER_S_FULL_M - Z_SAMPLER_M) / C_M_PER_NS
 
     return {
         "px": xp * p,                    # GeV  (xp/yp/zp are momentum direction cosines)
@@ -160,8 +164,6 @@ def build_metadata(args, rootfile, n_primaries, n_events, n_photons, s_sampler):
     return {
         # --- normalisation ---
         "runConfig": args.runconfig,
-        # which BDSIM build made the sample (key of BDSIM_SOURCES in submit_new.py)
-        "bdsimSource": os.environ.get("BDSIM_SOURCE", "unknown"),
         "chargeFraction": float(sample_config.CHARGE_FRACTION[args.runconfig]),
         "bunchIntensity": float(sample_config.BUNCH_INTENSITY),
         "weightFormula": WEIGHT_FORMULA,
@@ -185,8 +187,52 @@ def build_metadata(args, rootfile, n_primaries, n_events, n_photons, s_sampler):
     }
 
 
+def write_edm4hep_grouped(photons, group, n_groups, outfile, collection, category,
+                          n_primaries_per_group, metadata=None):
+    """
+    Write one EDM4hep event per stage-2 pass.
+
+    This is the shape ddsim wants for batching: ddsim segfaults when given
+    several EDM4hep files on one --inputFiles line (reproduced 3/3 on the
+    2026-04-08 stack), so the passes have to be merged into ONE file with many
+    events instead. One event per pass is also the honest unit -- each pass
+    replays the whole stage-1 dump once, so it represents exactly
+    n_primaries_per_group primaries, and the per-event nPrimaries then sums to
+    K * NGENERATE with no bookkeeping anywhere else.
+    """
+    px, py, pz = photons["px"], photons["py"], photons["pz"]
+    x, y, t = photons["x"], photons["y"], photons["t"]
+    z = 1e3 * Z_SAMPLER_M
+
+    writer = root_io.Writer(outfile)
+    if metadata:
+        meta = Frame()
+        for key, value in metadata.items():
+            meta.put_parameter(key, value)
+        writer.write_frame(meta, "metadata")
+
+    for g in range(n_groups):
+        sel = np.nonzero(group == g)[0]
+        particles = edm4hep.MCParticleCollection()
+        for i in sel:
+            mcp = particles.create()
+            mcp.setPDG(22)
+            mcp.setGeneratorStatus(1)
+            mcp.setCharge(0.0)
+            mcp.setMass(0.0)
+            mcp.setMomentum(edm4hep.Vector3d(px[i], py[i], pz[i]))
+            mcp.setVertex(edm4hep.Vector3d(x[i], y[i], z))
+            mcp.setTime(t[i])
+        frame = Frame()
+        frame.put(particles, collection)
+        frame.put_parameter("nPrimaries", int(n_primaries_per_group))
+        writer.write_frame(frame, category)
+    del writer
+    return len(px), n_groups
+
+
 def write_edm4hep(photons, outfile, collection, category, n_primaries, n_events=1,
-                  metadata=None):
+                  metadata=None, n_primaries_norm=None):
     """
     Write the photons as `n_events` Frames.
 
@@ -211,6 +257,16 @@ def write_edm4hep(photons, outfile, collection, category, n_primaries, n_events=
     # search turns those into photon-array slice points
     edges = np.linspace(0, n_primaries, n_events + 1).astype(np.int64)
     cuts = np.searchsorted(primary, edges)
+
+    # Two different counts, and conflating them is the easy mistake here:
+    # `n_primaries` slices the photons and is the number of BDSIM events in the
+    # file, while `n_primaries_norm` is what the weight must be divided by. For a
+    # stage-2 run those differ -- the file's events are injected particles, and
+    # the denominator is NGENERATE, the stage-1 primary count. These edges make the
+    # reported per-event nPrimaries sum to exactly n_primaries_norm.
+    if n_primaries_norm is None:
+        n_primaries_norm = n_primaries
+    norm_edges = np.linspace(0, n_primaries_norm, n_events + 1).astype(np.int64)
 
     writer = root_io.Writer(outfile)
 
@@ -238,7 +294,7 @@ def write_edm4hep(photons, outfile, collection, category, n_primaries, n_events=
         # Number of primary positrons this event accounts for. Carried on every
         # event so that summing it over whatever events are read gives the exact
         # denominator of the weight, independently of file size or splitting.
-        frame.put_parameter("nPrimaries", int(edges[ev + 1] - edges[ev]))
+        frame.put_parameter("nPrimaries", int(norm_edges[ev + 1] - norm_edges[ev]))
         writer.write_frame(frame, category)
     # podio 1.7's Writer has no explicit finish()/close(); the underlying
     # ROOTWriter is finalised in its destructor, so drop the reference here
@@ -249,7 +305,11 @@ def write_edm4hep(photons, outfile, collection, category, n_primaries, n_events=
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=str, required=True, help="BDSIM output ROOT file")
+    parser.add_argument("--input", type=str, required=True, action="append",
+                        help="BDSIM output ROOT file. Repeat it to merge the two "
+                             "stage-2 species passes into one sample -- they share "
+                             "the same primaries, so they are two halves of one "
+                             "sample, not two samples.")
     parser.add_argument("--output", type=str, default=None,
                         help="EDM4hep output file (default: <input> with _edm4hep.root)")
     parser.add_argument("--collection", type=str, default="MCParticles",
@@ -267,18 +327,79 @@ def main():
                         help="Which sample this is; selects the charge fraction from "
                              "sample_config.py and is recorded in the metadata. Adding a new "
                              "sample is just a new key in sample_config.py.")
+    parser.add_argument("--group-size", type=int, default=None,
+                        help="Consecutive input files forming one stage-2 pass "
+                             "(2 with the e+/gamma split). Each pass becomes ONE "
+                             "EDM4hep event, so K passes give a K-event file and one "
+                             "ddsim job covers all of them. Leave unset for the "
+                             "single-pass behaviour.")
+    parser.add_argument("--n-primaries", type=int, default=None,
+                        help="Primaries this file represents, for the normalisation. "
+                             "MUST be set for a stage-2 file: its BDSIM events are "
+                             "injected particles, not primary positrons, so the tree "
+                             "entry count is the wrong denominator. The right value is "
+                             "NGENERATE, the stage-1 primary count; that is the default. "
+                             "The replay factor K needs no mention -- the K stage-2 "
+                             "outputs sum to K * NGENERATE on their own.")
     args = parser.parse_args()
 
-    outfile = args.output or args.input.replace(".root", "_edm4hep.root")
+    outfile = args.output or args.input[0].replace(".root", "_edm4hep.root")
 
-    photons, n_raw, n_primaries = read_photons(args.input)
-    n_events_req = max(1, min(int(args.events_per_file), max(1, n_primaries)))
-    metadata = build_metadata(args, args.input, n_primaries, n_events_req,
-                              len(photons["px"]), sampler_s_position(args.input))
+    # Merge the species passes. The primary index is offset per file so the
+    # event splitting still groups photons by the positron that made them.
+    gsize = args.group_size or len(args.input)
+    if len(args.input) % gsize:
+        sys.exit(f"{len(args.input)} input files is not a multiple of "
+                 f"--group-size {gsize}")
 
-    n, n_events = write_edm4hep(photons, outfile, args.collection, args.category,
-                                n_primaries, args.events_per_file, metadata)
-    print(f"{args.input}: {n_raw} sampler hits -> {n} photons from {n_primaries} primaries "
+    photons, n_raw, n_primaries_file = None, 0, 0
+    group_of = []
+    for k, path in enumerate(args.input):
+        p_i, raw_i, nprim_i = read_photons(path)
+        group_of.append(np.full(len(p_i["px"]), k // gsize, dtype=np.int64))
+        if photons is None:
+            photons = {k: v for k, v in p_i.items()}
+        else:
+            p_i["primary"] = p_i["primary"] + n_primaries_file
+            for k in photons:
+                photons[k] = np.concatenate([photons[k], p_i[k]])
+        n_raw += raw_i
+        n_primaries_file += nprim_i
+
+    # keep the photons ordered by primary, which write_edm4hep's slicing assumes
+    group = np.concatenate(group_of)
+    order = np.argsort(photons["primary"], kind="stable")
+    for k in photons:
+        photons[k] = photons[k][order]
+    group = group[order]
+    n_groups = len(args.input) // gsize
+
+    # Default to the stage-1 primary count. Each stage-2 run replays the whole
+    # dump once, so it represents exactly NGENERATE primaries; K such runs sum to
+    # K * NGENERATE without anything needing to know K. See sample_config.py.
+    n_primaries = (args.n_primaries if args.n_primaries is not None
+                   else sample_config.NGENERATE[args.runconfig])
+    if n_primaries != n_primaries_file:
+        print(f"note: normalising to {n_primaries} primaries "
+              f"(NGENERATE), not the {n_primaries_file} BDSIM events "
+              "in the file -- correct for a stage-2 run")
+    n_events_req = max(1, min(int(args.events_per_file), max(1, n_primaries_file)))
+    metadata = build_metadata(args, ",".join(os.path.basename(p) for p in args.input),
+                              n_primaries, n_events_req,
+                              len(photons["px"]), sample_config.SAMPLER_S_FULL_M)
+    metadata["splitElement"] = "QF1BL"
+    metadata["nBdsimEventsStage2"] = int(n_primaries_file)
+
+    if args.group_size:
+        metadata["nPasses"] = int(n_groups)
+        n, n_events = write_edm4hep_grouped(
+            photons, group, n_groups, outfile, args.collection, args.category,
+            n_primaries, metadata)
+    else:
+        n, n_events = write_edm4hep(photons, outfile, args.collection, args.category,
+                                    n_primaries_file, args.events_per_file, metadata,
+                                    n_primaries_norm=n_primaries)
+    print(f"{'+'.join(args.input)}: {n_raw} sampler hits -> {n} photons from {n_primaries} primaries "
           f"written to {outfile} in {n_events} event(s) "
           f"(collection '{args.collection}', category '{args.category}')")
 

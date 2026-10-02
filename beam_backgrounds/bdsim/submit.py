@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 parser = argparse.ArgumentParser()
 parser.add_argument("--submit", action='store_true', help="Submit to batch system")
 parser.add_argument("--dryrun", action='store_true', help="dry run")
-parser.add_argument("--weightcalc", action='store_true', help="report how many files are needed for weight 1 for the given runconfig, then exit")
+parser.add_argument("--analysis", action='store_true', help="report on the sample for the given runconfig (files, size, weight, what is still needed), then exit")
 
 parser.add_argument("--njobs", type=int, help="number of jobs", default=10)
 parser.add_argument("--ngenerate", type=int, help="override the ngenerate from config/<lattice>/sample_config.py", default=None)
@@ -37,7 +37,24 @@ args = parser.parse_args()
 # python submit.py --cms_pool --submit --njobs 2600
 
 
-STACK = "/cvmfs/beam-physics.cern.ch/bdsim/x86_64-el9-gcc13-opt/bdsim-env-v1.7.7-g4v10.7.2.3-ftfp-boost.sh"
+# Where BDSIM comes from. Pick one with BDSIM_SOURCE.
+#   /cvmfs/...  -> an environment script, sourced on the worker node
+#   local path  -> a runtime tarball (see standalone/*/make_tarball.sh), shipped
+#                  with each job and run on top of key4hep
+BDSIM_SOURCES = {
+    "bdsim_def":     "/cvmfs/beam-physics.cern.ch/bdsim/x86_64-el9-gcc13-opt/bdsim-env-v1.7.7-g4v10.7.2.3-ftfp-boost.sh",
+    "bdsim_def_G4SR":  "standalone/G4SynchrotronRadiation/bdsim_g4sr.tgz",   # BDSIM 1.7.8 + Geant4 11.4.2 SR patch
+}
+BDSIM_SOURCE = "bdsim_def_G4SR"
+
+
+def sample_name(lattice, runconfig, suffix=""):
+    """
+    <lattice>_<runconfig>_<source>[_<suffix>], e.g. LCC_v2short_halo_standalone_G4SR.
+    python/sample_name.py parses it back.
+    """
+    return f"{lattice}_{runconfig}_{BDSIM_SOURCE}{suffix}"
+
 SINGULARITY = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest"
 HOSTNAME = socket.gethostname()
 
@@ -56,12 +73,16 @@ def chunk_list(lst, chunk_size):
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
-def weight_calc(args):
+def analyse_sample(args):
     """
-    How many files are needed for weight = 1, i.e. one full bunch, for the given
-    runconfig. Reports what is already on disk and what is still missing.
+    Report on a sample: what is on disk, how much of a bunch it represents, and
+    what completing it would cost.
 
         weight = chargeFraction * bunchIntensity / (nfiles * ngenerate)
+
+    Filesystem only -- it deliberately does not open the output files, so it
+    needs no key4hep and stays fast on a directory of any size. The primary count
+    therefore assumes every file used the ngenerate reported below.
     """
     configdir = os.path.join(os.getcwd(), "config", args.lattice)
     sys.path.insert(0, configdir)
@@ -81,27 +102,38 @@ def weight_calc(args):
     ngenerate = args.ngenerate or sample_config.NGENERATE[args.runconfig]
 
     particles = fraction * intensity          # positrons in one bunch for this sample
-    nfiles = particles / ngenerate            # files needed for weight 1
+    nfiles_w1 = particles / ngenerate         # files needed for weight 1
 
     suffix = f"_{args.suffix}" if args.suffix else ""
-    outdir = f"{args.storagedir}/{args.lattice}_{args.runconfig}{suffix}/"
-    existing = len(glob.glob(os.path.join(outdir, "output_*_edm4hep.root")))
-    if existing == 0:   # fall back to the v1 naming
-        existing = len(glob.glob(os.path.join(outdir, "output_*.hepevt")))
+    outdir = f"{args.storagedir}/{sample_name(args.lattice, args.runconfig, suffix)}/"
+    files = glob.glob(os.path.join(outdir, "output_*_edm4hep.root"))
+    if not files:   # fall back to the v1 naming
+        files = glob.glob(os.path.join(outdir, "output_*.hepevt"))
+    nfiles = len(files)
+    total_bytes = sum(os.path.getsize(f) for f in files) if files else 0
+    mean_bytes = total_bytes / nfiles if nfiles else 0
+    GB = 1024.0**3
 
     print(f"\n{args.lattice} / {args.runconfig}")
     print(f"  bunch intensity        {intensity:.4g}")
     print(f"  charge fraction        {fraction:g}")
     print(f"  particles in one bunch {particles:.4g}")
     print(f"  ngenerate per file     {ngenerate}")
-    print(f"  --> files for weight 1 {nfiles:,.0f}")
+
     print(f"\n  {outdir}")
-    print(f"  existing files         {existing:,}")
-    if existing:
-        print(f"  current weight         {particles / (existing * ngenerate):.6g}")
-        print(f"  still needed           {max(0, nfiles - existing):,.0f}")
+    print(f"  files                  {nfiles}")
+    print(f"  total size             {total_bytes / GB:.2f} GB")
+    if nfiles:
+        print(f"  mean file size         {mean_bytes / 1e6:.2f} MB")
+        print(f"  primaries simulated    {nfiles * ngenerate:.4g}")
+        print(f"  current weight         {particles / (nfiles * ngenerate):.6g}")
     else:
-        print(f"  still needed           {nfiles:,.0f}")
+        print(f"  current weight         - (no files yet)")
+
+    print(f"\n  files for weight 1     {nfiles_w1:.0f}")
+    print(f"  still needed           {max(0, nfiles_w1 - nfiles):.0f}")
+    if mean_bytes:
+        print(f"  size at weight 1       {nfiles_w1 * mean_bytes / GB:.1f} GB")
     print()
 
 
@@ -125,8 +157,9 @@ class BDSIMProducer:
         self.max_memory = args.max_memory  
         
         self.suffix = f"_{args.suffix}" if args.suffix else ""
-        self.logdir = f"{self.cwd}/{args.logdir}/{self.lattice}_{self.runconfig}{self.suffix}/" 
-        self.outdir = f"{self.storagedir}/{self.lattice}_{self.runconfig}{self.suffix}/"
+        self.name = sample_name(self.lattice, self.runconfig, self.suffix)
+        self.logdir = f"{self.cwd}/{args.logdir}/{self.name}/"
+        self.outdir = f"{self.storagedir}/{self.name}/"
 
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
@@ -137,6 +170,23 @@ class BDSIMProducer:
         os.system(f"tar -cvf {self.sandbox} -C {self.configdir} .")
 
         self.transfer_input_files = ['sandbox.tar']
+
+        # BDSIM source: a CVMFS environment script, or a local tarball to ship
+        self.bdsim_path = BDSIM_SOURCES[BDSIM_SOURCE]
+        self.bdsim_mode = "cvmfs" if self.bdsim_path.startswith("/cvmfs/") else "standalone"
+        if self.bdsim_mode == "standalone":
+            src = self.bdsim_path
+            if not os.path.isabs(src):
+                src = os.path.join(os.path.dirname(os.path.abspath(__file__)), src)
+            if not os.path.exists(src):
+                logger.error(f"{src} not found -- run make_tarball.sh in {os.path.dirname(src)}")
+                sys.exit(1)
+            self.tarball_name = os.path.basename(src)
+            self.standalone_tarball = f"{self.outdir}/{self.tarball_name}"
+            shutil.copy(src, self.standalone_tarball)
+            self.transfer_input_files.append(self.tarball_name)
+        logger.info(f"BDSIM source '{BDSIM_SOURCE}' ({self.bdsim_mode}): {self.bdsim_path}")
+
         self.output_pattern = 'output_$(SEED)_edm4hep.root'   # was output_$(SEED).hepevt in v1
         self.transfer_output_files  = [self.output_pattern]
 
@@ -152,6 +202,62 @@ class BDSIMProducer:
             njob += 1
 
 
+
+    def env_block(self):
+        """The only part of the job script that differs between the two modes."""
+        if self.bdsim_mode == "standalone":
+            return f"""
+            echo "Unpack standalone BDSIM"
+            mkdir -p bdsim_standalone
+            if ! tar -xzf {self.tarball_name} -C bdsim_standalone; then
+                echo "ERROR: Failed to unpack {self.tarball_name}" >&2
+                exit 1
+            fi
+
+            # setup.sh checks CVMFS and sources the pinned key4hep release itself
+            echo "Sourcing standalone BDSIM (key4hep + patched Geant4)"
+            set +u
+            if ! source bdsim_standalone/setup.sh; then
+                echo "ERROR: Failed to source bdsim_standalone/setup.sh" >&2
+                exit 1
+            fi
+            set -u
+            echo "bdsim: $(which bdsim)"
+            # guard: the patched Geant4 must be the one loaded, not key4hep's 11.4.0
+            if ldd "$(which bdsim)" | grep -q "key4hep.*geant4"; then
+                echo "ERROR: bdsim resolves Geant4 from key4hep, not the shipped build" >&2
+                ldd "$(which bdsim)" | grep libG4 >&2
+                exit 1
+            fi
+"""
+        return f"""
+            echo "Checking CVMFS"
+            set +u
+            if ! timeout 15 ls "{self.bdsim_path}" >/dev/null 2>&1; then
+                echo "ERROR: Stack not found or not accessible: {self.bdsim_path}" >&2
+                exit 1
+            fi
+
+            echo "Sourcing stack"
+            if ! source "{self.bdsim_path}" >/dev/null 2>&1; then
+                echo "ERROR: Failed to source stack: {self.bdsim_path}" >&2
+                exit 1
+            fi
+            set -u
+"""
+
+    def convert_cmd(self):
+        """
+        convert.sh sources key4hep itself. In standalone mode key4hep is already
+        active, and key4hep refuses a second setup in the same environment ("The
+        Key4hep software stack is already set up, please start a new shell"), so
+        the conversion runs in a clean environment instead. convert.sh itself is
+        unchanged and still works as before in cvmfs mode.
+        """
+        # BDSIM_SOURCE is picked up by convert_edm4hep.py and stored as bdsimSource
+        if self.bdsim_mode == "standalone":
+            return f'env -i HOME="$HOME" TMPDIR="${{TMPDIR:-/tmp}}" PATH=/usr/bin:/bin BDSIM_SOURCE={BDSIM_SOURCE} bash convert.sh'
+        return f"BDSIM_SOURCE={BDSIM_SOURCE} bash convert.sh"
 
     def make_script(self, runconfig):
         return f"""
@@ -179,20 +285,7 @@ class BDSIMProducer:
             echo "List current working dir"
             ls -lrt
 
-            echo "Checking CVMFS"
-            set +u
-            if ! timeout 15 ls "{STACK}" >/dev/null 2>&1; then
-                echo "ERROR: Stack not found or not accessible: {STACK}" >&2
-                exit 1
-            fi
-
-            echo "Sourcing stack"
-            if ! source "{STACK}" >/dev/null 2>&1; then
-                echo "ERROR: Failed to source stack: {STACK}" >&2
-                exit 1
-            fi
-            set -u
-
+{self.env_block()}
             echo "Unpack sandbox"
             if ! tar -xf sandbox.tar; then
                 echo "ERROR: Failed to unpack sandbox.tar" >&2
@@ -215,7 +308,7 @@ class BDSIMProducer:
 
             echo "Running conversion"
             #python convert.py --input "output_${{seed}}.root"
-            bash convert.sh "${{seed}}" {runconfig}
+            {self.convert_cmd()} "${{seed}}" {runconfig}
 
             if [ ! -f "output_${{seed}}_edm4hep.root" ]; then
                 echo "ERROR: Conversion did not produce output_${{seed}}_edm4hep.root" >&2
@@ -280,7 +373,7 @@ class BDSIMProducer:
             
 
         
-            fOut.write(f'+JobBatchName = "BDSIM_{self.lattice}_{self.runconfig}{self.suffix}_v{subv}"\n')
+            fOut.write(f'+JobBatchName = "BDSIM_{self.name}_v{subv}"\n')
             fOut.write(f'RequestMemory  = {self.max_memory}\n')
 
             
@@ -344,7 +437,7 @@ class BDSIMProducer:
 
 
     def dryrun(self):
-        rundir = f"/tmp/bdsim/{self.lattice}/{self.runconfig}{self.suffix}/"
+        rundir = f"{self.outdir}/tmp/"      # inside the sample directory, wiped on every dryrun
 
         script_init = f"""
         set -e
@@ -355,6 +448,7 @@ class BDSIMProducer:
         pwd
 
         cp {self.sandbox} .
+        {"cp " + self.standalone_tarball + " ." if self.bdsim_mode == "standalone" else ""}
         ls -lrt
 
         """
@@ -363,12 +457,16 @@ class BDSIMProducer:
         script_sandbox = self.make_script(self.runconfig)
         with open(f"{rundir}/run.sh", "w") as tf:
             tf.write(script_sandbox)
-        subprocess.run(["bash", "run.sh", "12345"], cwd=rundir)
+        # clean environment, like a condor job: an already-sourced key4hep in the
+        # calling shell makes key4hep's setup.sh refuse to run again
+        clean_env = {k: os.environ[k] for k in ("HOME", "USER", "LOGNAME", "TMPDIR", "X509_USER_PROXY") if k in os.environ}
+        clean_env["PATH"] = "/usr/bin:/bin"
+        subprocess.run(["bash", "run.sh", "12345"], cwd=rundir, env=clean_env)
 
 
 def main():
-    if args.weightcalc:   # query only: no sandbox, no output directory
-        weight_calc(args)
+    if args.analysis:   # query only: no sandbox, no output directory
+        analyse_sample(args)
         return
 
     producer = BDSIMProducer(args)

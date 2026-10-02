@@ -3,8 +3,11 @@
 Lattice LCC_v1 (LCC V106.2), same TWISS and aperture files as `config/LCC_v1`.
 **The machine model is unchanged** — the generated `input_sequence.gmad`,
 `input_components.gmad` and `input_beam.gmad` are byte-identical to those from
-`LCC_v1`. What changed is how the beam-halo distribution is generated, plus a
-handful of parameters that were silently ignored.
+`LCC_v1`. **The generated beam differs from v1 by the sampling method alone** —
+the energy-spread and dispersion bugs of sections 2 and 3 are documented and left
+deliberately in place, so that the effect of the sampler change can be measured
+on its own. Beyond that, some silently-ignored parameters were repaired and the
+output is EDM4hep instead of HEPEvt.
 
 ```bash
 # dry run
@@ -145,33 +148,56 @@ over *files*, never over photons — that caveat goes away in v2.
 `np.random.default_rng(seed)`. The same seed produces a different (correct)
 distribution than v1.
 
-## 2. Energy spread fixed
+## 2. Energy spread — bug identified, deliberately NOT fixed
 
-v1:
+> **v2 keeps the v1 behaviour on purpose**, so that LCC_v2 differs from LCC_v1 in
+> the sampling method alone and the effect of that change can be measured by
+> itself. The fix is written out as a comment in `generate_4d_distribution`.
+
+v1, and still v2:
 
 ```python
-sampled_E = np.random.normal(45.6, 1.0e-3, size=size)
+sampled_E = rng.normal(45.6, 1.0e-3, size=size)
 ```
 
 `SIGE = 0.001` in the TWISS header is `dE/E`, so the absolute spread should be
-`0.001 x 45.6 GeV = 45.6 MeV`. v1 used **1 MeV**, a factor 45.6 too small
-(measured `sigma_rel = 2.2e-5` in `inputfile.dat`). v2 draws
-`delta ~ N(0, SIGE)` and sets `E = ENERGY x (1 + delta)`; measured
-`sigma_rel = 1.002e-3`, `sigma_E = 45.67 MeV`.
+`0.001 x 45.6 GeV = 45.6 MeV`. This uses **1 MeV**, a factor 45.6 too small —
+`sigma_delta = 2.2e-5` instead of `1.0e-3`. The correct version draws
+`delta ~ N(0, SIGE)` and sets `E = ENERGY x (1 + delta)`, which was measured to
+give `sigma_rel = 1.002e-3`, `sigma_E = 45.67 MeV`.
 
-## 3. Dispersive orbit added to the halo (new physics content)
+## 3. Dispersive orbit — omission identified, deliberately NOT fixed
+
+> Same reasoning as section 2, and the two must be fixed **together**.
 
 BDSIM applies `distrType="userfile"` coordinates literally — the `dispx`/`dispxp`
-in the beam block are only used by `gausstwiss`. So the dispersive offset has to
-be added when writing the file, and v1 never did. With `Dx = 0.349 m` at the
-start of the beamline and the corrected energy spread this is a **349 µm rms**
-horizontal offset on top of an 813 µm betatron sigma — a ~9 % increase of
-sigma_x in quadrature. In v1 it would have been 7.7 µm, i.e. nothing, which is
-why the two fixes belong together: correcting the energy spread alone would have
-had no transverse effect.
+in the beam block are used only by `gausstwiss`. So the dispersive offset would
+have to be added when writing the file, and neither v1 nor v2 does it.
 
-Note this still does **not** model an off-momentum halo (a tail *in delta*).
-The halo remains a pure betatron-amplitude model with a Gaussian energy core.
+With the correct `sigma_delta = 1e-3` and `Dx = 0.349 m` at the start of the
+beamline this is a **349 µm rms** horizontal offset on top of an 813 µm betatron
+sigma — `sigma_x` would go from 813 µm to 885 µm, ~9 % wider in quadrature. With
+the v1 energy spread it would be 7.7 µm, i.e. nothing. That is why the two belong
+together: fixing either alone changes nothing measurable.
+
+Where it matters is the *start* of the beamline. Dispersion is suppressed to zero
+from the last arc dipole onwards, so it is 0 at the final doublet and at the IP:
+
+| element | D [m] | D·sigma_delta | betatron sigma_x | total sigma_x |
+|---|---|---|---|---|
+| QF5L (start) | 0.3489 | 349 µm | 813 µm | 885 µm |
+| B0AL | 0 | 0 | 1305 µm | 1305 µm |
+| QD0AL (sampler) | 0 | 0 | 212 µm | 212 µm |
+| IP | 0 | 0 | 7.9 µm | 7.9 µm |
+
+So the effect on the final doublet, where the dangerous SR is emitted, is
+indirect: correct energies mean particles are focused chromatically correctly
+through the final focus rather than all being tracked as on-momentum.
+
+Note that even fixed, this would **not** model an off-momentum halo (a tail *in
+delta*). The halo is a pure betatron-amplitude model with a Gaussian energy core;
+the Touschek and beamstrahlung population that reaches delta of a percent is
+absent entirely.
 
 ## 4. Emittances and energy read from the TWISS header
 
@@ -531,9 +557,12 @@ so the normalisation bookkeeping of §7 is untouched.
 **time in ns** — note that HEPEvt used mm/c. A photon at the sampler now has
 t = -8.0056 ns instead of -2400 mm/c; both mean "arrives at the IP at t = 0".
 
-The MCParticle collection name defaults to `MCParticle` and is settable with
-`--collection`; it must match ddsim's `--edm4hep.mcParticleCollectionName`
-(the GuineaPig pairs use `Pairs`).
+The MCParticle collection name defaults to **`MCParticles`** (plural) and is
+settable with `--collection`. That is the name ddsim's EDM4hep reader looks for,
+so no ddsim flag is needed. **If the collection is not found, ddsim does not
+fail** -- it silently falls back to the particle gun and writes a
+plausible-looking output file containing gun events and no SR at all. The
+GuineaPig pairs use `Pairs` and therefore do need the flag.
 
 ### Validation against `convert.py`
 
