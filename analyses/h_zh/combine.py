@@ -303,10 +303,11 @@ def make_pseudodata(procs, target="bb", variation=1.0):
 if __name__ == "__main__":
 
     ecm = args.ecm
-    outDir = f"output/h_zh/combine/ecm{ecm}/"
+    outDir = f"output/h_zh/combine_rerun/ecm{ecm}/"
     plot_dir = "/home/submit/jaeyserm/public_html/fccee/h_zh/combine_smoothing/"
     sigma = 1
-    bkg_unc = 1.01
+    #bkg_unc = 1.01
+    bkg_unc = 1.0
 
     z_decays = ["qq", "bb", "cc", "ss", "ee", "mumu", "nunu" , "tautau"]
     h_decays = ["bb", "cc", "gg", "ss", "mumu", "tautau", "ZZ", "WW", "Za", "aa", "inv"]
@@ -374,8 +375,15 @@ if __name__ == "__main__":
         hists = []
         if cat == "qq":
             inputDir = f"output/h_zh_hadronic/histmaker/ecm{ecm}/"
-            hName = 'zqq_recoil_m_mqq_mva' # zqq_recoil_m zqq_recoil_m_mqq mva_score
-            #hName = 'zqq_recoil_m_mqq' # zqq_recoil_m_mqq zqq_recoil_m
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_orig/"
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_new_base/"
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_new_jes1pct/"
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_new_jer1pct/"
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_new_jes2pct/"
+            #inputDir = f"output/h_zh_hadronic/histmaker/ecm240_Sept2026_new_jer5pct/"
+            hName = 'zqq_recoil_m_mqq_mva' #  mva-fit
+            #hName = 'zqq_recoil_m_mqq' # recoil-mqq fit fit
+            hName = 'zqq_recoil_m' # recoil-only fit
             procs = ["ZH", "WW", "ZZ", "Zgamma", "Rare"] # first must be signal
             proc_idx = [0, p*1, p*2, p*3, p*4]
 
@@ -407,7 +415,9 @@ if __name__ == "__main__":
 
             ## NOMINAL 2D MVA
             inputDir = f"output/h_zh_leptonic/histmaker/ecm{ecm}/"
-            hName, rebin = f'{cat}_recoil_m_mva', 1
+            #hName, rebin = f'{cat}_recoil_m_mva', 1 #  mva-fit
+            hName, rebin = f'{cat}_zll_recoil_m', 1 # recoil fit
+            
 
             procs = ["ZH", "WW", "ZZ", "Zgamma", "Rare"] # first must be signal
             proc_idx = [0, p*1, p*2, p*3, p*4]
@@ -463,15 +473,16 @@ if __name__ == "__main__":
         print(dc)
 
         if args.run and len(cats) == 1:
-            cmd = f"singularity exec --bind /work:/work /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; text2hdf5.py --X-allow-no-background datacard_{cat}.txt -o ws_{cat}.hdf5; combinetf.py ws_{cat}.hdf5 -o fit_output_{cat}.root -t 0  --expectSignal=1 {bbb}'"
+            cmd = f"singularity exec --bind /work:/work,/cvmfs:/cvmfs /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; text2hdf5.py --X-allow-no-background datacard_{cat}.txt -o ws_{cat}.hdf5; combinetf.py ws_{cat}.hdf5 -o fit_output_{cat}.root -t 0  --expectSignal=1 {bbb}'"
+            print(cmd)
             os.system(cmd)
 
     if len(cats) > 1 and args.run:
         cards = ' '.join([f'datacard_{x}.txt' for x in cats])
-        cmd = f"singularity exec --bind /work:/work /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; combineCards.py {cards} > datacard_combined.txt'"
+        cmd = f"singularity exec --bind /work:/work,/cvmfs:/cvmfs /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; combineCards.py {cards} > datacard_combined.txt'"
         #print(cmd)
         os.system(cmd)
         
-        cmd = f"singularity exec --bind /work:/work /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; text2hdf5.py --X-allow-no-background datacard_combined.txt -o ws_combined.hdf5; combinetf.py ws_combined.hdf5 -o fit_output_combined.root -t 0  --expectSignal=1  {bbb}'" # --binByBinStat
+        cmd = f"singularity exec --bind /work:/work,/cvmfs:/cvmfs /work/submit/jaeyserm/software/docker/cmssw_cc7.sif bash -c 'PYTHONPATH=''; dir=$(pwd); cd /work/submit/jaeyserm/wmass/CMSSW_10_6_19_patch2/src; source /cvmfs/cms.cern.ch/cmsset_default.sh; cmsenv; cd $dir/{outDir}; text2hdf5.py --X-allow-no-background datacard_combined.txt -o ws_combined.hdf5; combinetf.py ws_combined.hdf5 -o fit_output_combined.root -t 0  --expectSignal=1  {bbb}'" # --binByBinStat
         os.system(cmd)
 

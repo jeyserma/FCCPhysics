@@ -1,4 +1,8 @@
-
+#include <random>
+#include <cmath>
+#include <cstdint>
+#include <stdexcept>
+#include <algorithm>
 
 namespace FCCAnalyses {
 
@@ -205,6 +209,124 @@ Vec_rp jets2rp(Vec_f px, Vec_f py, Vec_f pz, Vec_f e, Vec_f m) {
         p.charge = 0;
         ret.push_back(p);
     }
+    return ret;
+}
+
+Vec_rp jets2rp_smeared(
+    const Vec_f &px,
+    const Vec_f &py,
+    const Vec_f &pz,
+    const Vec_f &e,
+    const Vec_f &m,
+    double jes_factor,
+    double jer_base,
+    double jer_sf,
+    std::uint64_t event_id,
+    std::uint64_t seed = 12345
+) {
+    /*
+      Jet energy scale correction + jet energy resolution smearing.
+
+      jes_factor: multiplicative scale correction
+                  1.00 = nominal
+                  1.01 = JES +1%
+                  0.99 = JES -1%
+
+      jer_base:   existing relative jet energy resolution
+                  0.04 = 4%
+
+      jer_sf:     target resolution / existing resolution
+                  1.00 = no additional smearing
+                  1.10 = 10% worse resolution
+                  1.20 = 20% worse resolution
+
+      event_id:   unique event identifier, e.g. rdfentry_
+
+      seed:       fixed random-seed offset
+
+      Each jet receives an independent Gaussian fluctuation.
+      The complete four-momentum is scaled by the same factor.
+    */
+
+    if (jes_factor <= 0.0 || jer_base < 0.0 || jer_sf < 1.0) {
+        throw std::invalid_argument(
+            "Invalid JES or JER parameters"
+        );
+    }
+
+    if (py.size() != px.size() ||
+        pz.size() != px.size() ||
+        e.size()  != px.size() ||
+        m.size()  != px.size()) {
+        throw std::invalid_argument(
+            "Jet component vectors have different sizes"
+        );
+    }
+
+    Vec_rp ret;
+    ret.reserve(px.size());
+
+    // Additional relative resolution.
+    // Variances are added in quadrature.
+    const double sigma_add =
+        jer_base * std::sqrt(jer_sf * jer_sf - 1.0);
+
+    for (std::size_t i = 0; i < px.size(); ++i) {
+
+        edm4hep::ReconstructedParticleData p{};
+
+        // Empty/padded jets should remain empty.
+        if (e[i] <= 0.0f) {
+            ret.push_back(p);
+            continue;
+        }
+
+        double z = 0.0;
+
+        if (sigma_add > 0.0) {
+
+            // Deterministic seed for this event and jet.
+            // No shared RNG: safe for RDataFrame multithreading.
+            std::uint64_t key =
+                event_id ^
+                (seed + 0x9e3779b97f4a7c15ULL *
+                        (static_cast<std::uint64_t>(i) + 1));
+
+            // SplitMix64 finalizer to decorrelate nearby seeds.
+            key ^= key >> 30;
+            key *= 0xbf58476d1ce4e5b9ULL;
+            key ^= key >> 27;
+            key *= 0x94d049bb133111ebULL;
+            key ^= key >> 31;
+
+            std::mt19937_64 rng(key);
+            std::normal_distribution<double> gauss(0.0, 1.0);
+
+            z = gauss(rng);
+        }
+
+        // Scale correction followed by additional smearing.
+        // The lower bound protects against an unphysical
+        // negative energy in an extreme Gaussian fluctuation.
+        const double smear_factor =
+            std::max(0.01, 1.0 + z * sigma_add);
+
+        const double factor =
+            jes_factor * smear_factor;
+
+        // Apply the same factor to the entire four-vector.
+        p.momentum.x = px[i] * factor;
+        p.momentum.y = py[i] * factor;
+        p.momentum.z = pz[i] * factor;
+
+        p.energy = e[i] * factor;
+        p.mass   = m[i] * factor;
+
+        p.charge = 0;
+
+        ret.push_back(p);
+    }
+
     return ret;
 }
 

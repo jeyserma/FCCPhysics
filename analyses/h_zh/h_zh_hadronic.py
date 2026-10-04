@@ -218,18 +218,16 @@ processListTrainingLL = {
 }
 
 processList = processListSignal | processListBkg
-processList = processListSignal
+#processList = processListSignal
 
 if treemaker:
     processList = processListTraining
 
 
-processList = {
+#processList = {
 
-    f'p8_ee_WW_ecm{ecm}':                  {'fraction':fraction},
-
-
-}
+#    f'p8_ee_WW_ecm{ecm}':                  {'fraction':fraction},
+#}
 
 
 inputDir = "/ceph/submit/data/group/fcc/ee/generation/DelphesEvents/winter2023/IDEA/"
@@ -242,11 +240,13 @@ includePaths = ["../../functions/functions.h", "../../functions/functions_gen.h"
 # output directory
 if treemaker:
     outputDir   = f"/ceph/submit/data/group/fcc/ee/analyses/zh/hadronic/treemaker/ecm{ecm}"
+    outputDir   = f"/ceph/submit/data/group/fcc/ee/analyses/zh/hadronic/treemaker/ecm{ecm}_Sept2026"
 else:
     outputDir   = f"output/h_zh_hadronic/histmaker/ecm{ecm}"
+    outputDir   = f"output/h_zh_hadronic/histmaker/ecm{ecm}_Sept2026_new_jer5pct"
 
 # optional: ncpus, default is 4, -1 uses all cores available
-nCPUS       = 32
+nCPUS       = 64
 
 # scale the histograms with the cross-section and integrated luminosity
 doScale = True
@@ -298,7 +298,12 @@ def exclusive_clustering(df, njets):
     df = df.Define(f"jets_py_N{njets}", f"FCCAnalyses::JetClusteringUtils::get_py(jets_N{njets})")
     df = df.Define(f"jets_pz_N{njets}", f"FCCAnalyses::JetClusteringUtils::get_pz(jets_N{njets})")
     df = df.Define(f"jets_m_N{njets}", f"FCCAnalyses::JetClusteringUtils::get_m(jets_N{njets})")
-    df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets})")
+    #df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets})")
+    #df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp_smeared(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets}, 1.0, 0.04, 1.0, rdfentry_)")
+    #df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp_smeared(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets}, 1.01, 0.04, 1.01, rdfentry_)") # JER 1%
+    df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp_smeared(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets}, 1.01, 0.04, 1.05, rdfentry_)") # JER 5%
+    #df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp_smeared(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets}, 1.01, 0.04, 1.10, rdfentry_)") # JES 1%
+    #df = df.Define(f"jets_rp_N{njets}", f"FCCAnalyses::jets2rp_smeared(jets_px_N{njets}, jets_py_N{njets}, jets_pz_N{njets}, jets_e_N{njets}, jets_m_N{njets}, 1.02, 0.04, 1.10, rdfentry_)") # JES 2%
     df = df.Define(f"jets_rp_cand_N{njets}", f"FCCAnalyses::select_jets(jets_rp_N{njets}, jetconstituents_N{njets}, {njets}, ReconstructedParticles)") # reduces potentially the jet multiplicity
     df = df.Define(f"njets_cand_N{njets}", f"jets_rp_cand_N{njets}.size()")
     return df
@@ -482,7 +487,7 @@ def build_graph_zqq(df, dataset):
 
 
     df = df.Define("zqq", "std::vector<Vec_rp> r = {zqq_N0, zqq_N2, zqq_N4, zqq_N6}; return r;")
-    df = df.Define("zqq_jets", "std::vector<Vec_rp> r = {jets_rp_cand_N0, jets_rp_cand_N2, jets_rp_cand_N4, jets_rp_cand_N6}; return r;")
+    df = df.Define("zqq_jets", "std::vector<Vec_rp> r = {jets_rp_cand_N0, jets_rp_cand_N2, jets_rp_cand_N4, jets_rp_cand_N6}; return r;") # wrong, must be jets, not RP
     df = df.Define("zqq_m", "Vec_f r = {zqq_m_N0, zqq_m_N2, zqq_m_N4, zqq_m_N6}; return r;")
     df = df.Define("zqq_p", "Vec_f r = {zqq_p_N0, zqq_p_N2, zqq_p_N4, zqq_p_N6}; return r;")
     df = df.Define("zqq_recoil_m", "Vec_f r = {zqq_recoil_m_N0, zqq_recoil_m_N2, zqq_recoil_m_N4, zqq_recoil_m_N6}; return r;")
@@ -545,7 +550,7 @@ def build_graph_zqq(df, dataset):
     df = df.Define("W1_p", "W1.P()")
     df = df.Define("W2_p", "W2.P()")
     df = df.Define("W1_costheta", "std::abs(W1.Theta())")
-    df = df.Define("W2_costheta", "std::abs(W1.Theta())")
+    df = df.Define("W2_costheta", "std::abs(W1.Theta())") # should be W2
     df = df.Define("delta_mWW", "std::sqrt((W1_m-78)*(W1_m-78) + (W2_m-78)*(W2_m-78))")
 
     hists.append(df.Histo1D(("delta_mWW_nosel", "", *(1000, 0, 100)), "delta_mWW"))
