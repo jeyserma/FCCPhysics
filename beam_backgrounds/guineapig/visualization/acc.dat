@@ -1,0 +1,808 @@
+
+! Feasibility study report version, 4IP (2025)
+$ACCELERATOR:: FCCee_Z_GHC_V25p1
+{
+energy=45.6;
+particles=21.80;
+beta_x=110.00;
+beta_y=0.70;
+dist_z.1=0;dist_z.2=0;
+sigma_x=8837.42;
+sigma_y=38.34;
+sigma_z=15200.00;
+offset_x=0.0;
+offset_y=0.0;
+n_b=1;
+f_rep=1;
+angle_x=-0.015;
+charge_sign=-1;
+}
+
+
+
+####################################################
+
+
+
+$PARAMETERS:: CFG_DEF_64
+{
+n_x=64;
+n_y=64;
+n_z=64;
+n_t=1;
+cut_x=51.60*sigma_x.1;
+cut_y=32.59*sigma_y.1;
+cut_z=2.0*sigma_z.1;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+$PARAMETERS:: CFG_DEF_128
+{
+n_x=128;
+n_y=128;
+n_z=128;
+n_t=1;
+cut_x=51.60*sigma_x.1;
+cut_y=32.59*sigma_y.1;
+cut_z=2.0*sigma_z.1;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+$PARAMETERS:: CFG_DEF_64_4Z
+{
+n_x=64;
+n_y=64;
+n_z=64;
+n_t=1;
+cut_x=51.60*sigma_x.1;
+cut_y=32.59*sigma_y.1;
+cut_z=4.0*sigma_z.1;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+$PARAMETERS:: CFG_DEF_64_4Z_XYADJ
+{
+n_x=64;
+n_y=64;
+n_z=64;
+n_t=1;
+cut_x=103.18*sigma_x.1;
+cut_y=86.85*sigma_y.1;
+cut_z=4.0*sigma_z.1;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+$PARAMETERS:: CFG_1_1_1
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=26.0*sigma_x.1;
+cut_y=22.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_2_2_2
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=52.0*sigma_x.1;
+cut_y=43.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_3_3_3
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=77.0*sigma_x.1;
+cut_y=65.0*sigma_y.1;
+cut_z=3.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_4_4_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_1_4_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=26.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_2_4_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=52.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_3_4_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=77.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_4_1_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=22.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_4_2_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=43.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+
+$PARAMETERS:: CFG_4_3_4
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=65.0*sigma_y.1;
+cut_z=4.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_4_4_1
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=1.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_4_4_2
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=2.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}
+
+
+$PARAMETERS:: CFG_4_4_3
+{
+n_x=64;
+n_y=1400;
+n_z=64;
+n_t=1;
+cut_x=103.0*sigma_x.1;
+cut_y=87.0*sigma_y.1;
+cut_z=3.0*sigma_z.1 ;
+n_m= 100000;
+electron_ratio=1;
+do_eloss = 1 ;
+store_beam=1 ;
+electron_ratio=1. ;
+do_photons=1 ;
+photon_ratio=1. ;
+store_photons=1 ;
+do_pairs= 0;
+do_coherent=1;
+track_pairs=0;
+store_pairs=0;
+pair_ecut = 0.000511;
+hadron_ratio=100000;
+do_hadrons=0;
+store_hadrons=0;
+grids=1 ;
+beam_size=0;
+pair_q2 = 2 ;
+pair_ratio = 1.;
+do_lumi=7 ;
+num_lumi=200000;
+lumi_p=1e-28;
+do_bhabhas=0;
+bhabha_scal=5*1e-29;
+bhabha_ecmload=91.2;
+rndm_seed=100000;
+load_events=0;
+do_dump=1;
+bfield_z=-2.0;
+beam_fields_on_pairs=1;
+beampipe_r=10.0;
+do_edm4hep=1;
+stop_tracking_at_boundary=1;
+}

@@ -133,8 +133,8 @@ def plot_hists_1d(
 
     if len(hists) == 0:
         raise ValueError("No histograms provided.")
-    if len(labels) > 0 and len(hists) != len(labels):
-        raise ValueError("hists and labels must have the same length.")
+    #if len(labels) > 0 and len(hists) != len(labels):
+    #    raise ValueError("hists and labels must have the same length.")
 
     ROOT.gStyle.SetOptStat(0)
 
@@ -421,7 +421,7 @@ def plot_hist_2d(
 
     h.GetXaxis().SetNdivisions(510)
     h.GetYaxis().SetNdivisions(510)
-    h.GetZaxis().SetNdivisions(510)
+    #h.GetZaxis().SetNdivisions(510)
 
     cw, ch = canvas_size
     c = ROOT.TCanvas(f"c_{h.GetName()}", "", cw, ch)
@@ -445,8 +445,11 @@ def plot_hist_2d(
     # Optional: style the palette axis a bit
     palette = h.GetListOfFunctions().FindObject("palette")
     if palette:
-        palette.SetX1NDC(0.84)
-        palette.SetX2NDC(0.89)
+        #palette.SetX1NDC(0.84)
+        #palette.SetX2NDC(0.89)
+
+        palette.SetY1NDC(c.GetBottomMargin())
+        palette.SetY2NDC(1.0 - c.GetTopMargin())
 
     # Optional text
     if extra_text_left:
@@ -466,3 +469,354 @@ def plot_hist_2d(
     c.Update()
     c.SaveAs(f"{outname}.png")
     c.SaveAs(f"{outname}.pdf")
+
+
+def plot_graphs_1d(
+    graphs,
+    labels,
+    outname,
+    x_title=None,
+    y_title=None,
+    x_range=None,          # tuple: (xmin, xmax)
+    y_range=None,          # tuple: (ymin, ymax)
+    logy=False,
+    logx=False,
+    colors=None,
+    line_width=3,
+    line_styles=None,
+    marker_styles=None,
+    marker_size=1.0,
+    legend_pos=(0.62, 0.70, 0.88, 0.88),
+    legend_header=None,
+    legend_ncols=1,
+    canvas_size=(800, 800),
+    draw_option="LP",
+    extra_text_left=None,
+    extra_text_right=None,
+    y_factor=1.35,
+    print_points=False,
+):
+
+    if len(graphs) == 0:
+        raise ValueError("No graphs provided.")
+
+    if labels and len(graphs) != len(labels):
+        raise ValueError("graphs and labels must have the same length.")
+
+    ROOT.gStyle.SetOptStat(0)
+
+    # Default colors
+    if colors is None:
+        colors = [
+            ROOT.kBlack,
+            ROOT.kRed + 1,
+            ROOT.kBlue + 1,
+            ROOT.kGreen + 2,
+            ROOT.kMagenta + 1,
+            ROOT.kOrange + 7,
+            ROOT.kCyan + 1,
+        ]
+
+    if line_styles is None:
+        line_styles = [1] * len(graphs)
+
+    if marker_styles is None:
+        marker_styles = [20] * len(graphs)
+
+    # Clone graphs so styling does not modify originals
+    graphs_draw = []
+
+    for i, graph in enumerate(graphs):
+
+        g = graph.Clone(f"{graph.GetName()}_graph_clone")
+
+        color = colors[i % len(colors)]
+
+        g.SetLineColor(color)
+        g.SetMarkerColor(color)
+
+        g.SetLineWidth(line_width)
+        g.SetLineStyle(line_styles[i % len(line_styles)])
+
+        g.SetMarkerStyle(marker_styles[i % len(marker_styles)])
+        g.SetMarkerSize(marker_size)
+
+        graphs_draw.append(g)
+
+        if print_points:
+            print(f"\nGraph {i}:")
+            for j in range(g.GetN()):
+                print(
+                    f"  {j}: "
+                    f"x={g.GetPointX(j):.6g}, "
+                    f"y={g.GetPointY(j):.6g}"
+                )
+
+    # --------------------------------------------------
+    # Determine axis ranges
+    # --------------------------------------------------
+
+    x_values = []
+    y_values = []
+
+    for g in graphs_draw:
+
+        if g.InheritsFrom("TF1"):
+            continue
+
+        for i in range(g.GetN()):
+
+            x = g.GetPointX(i)
+            y = g.GetPointY(i)
+
+            # Include error bars when determining ranges
+            if g.InheritsFrom("TGraphAsymmErrors"):
+                x_low = g.GetErrorXlow(i)
+                x_high = g.GetErrorXhigh(i)
+
+                y_low = g.GetErrorYlow(i)
+                y_high = g.GetErrorYhigh(i)
+
+            elif g.InheritsFrom("TGraphErrors"):
+                x_low = x_high = g.GetErrorX(i)
+                y_low = y_high = g.GetErrorY(i)
+
+            else:
+                x_low = x_high = 0.0
+                y_low = y_high = 0.0
+
+            x_values.extend([x - x_low, x + x_high])
+            y_values.extend([y - y_low, y + y_high])
+
+    if not x_values:
+        raise ValueError("All graphs are empty.")
+
+    # X range
+    if x_range is not None:
+        xmin, xmax = x_range
+
+    else:
+        if logx:
+            positive_x = [x for x in x_values if x > 0]
+
+            if not positive_x:
+                raise ValueError("No positive X values for log scale.")
+
+            xmin = min(positive_x)
+            xmax = max(positive_x)
+
+            xmin *= 0.8
+            xmax *= 1.2
+
+        else:
+            xmin = min(x_values)
+            xmax = max(x_values)
+
+            if xmin == xmax:
+                xmin -= 0.5
+                xmax += 0.5
+            else:
+                dx = xmax - xmin
+                xmin -= 0.05 * dx
+                xmax += 0.05 * dx
+
+    # Y range
+    if y_range is not None:
+        ymin, ymax = y_range
+
+    else:
+        max_y = max(y_values)
+        min_y = min(y_values)
+
+        if logy:
+            positive_y = [y for y in y_values if y > 0]
+
+            if not positive_y:
+                raise ValueError("No positive Y values for log scale.")
+
+            ymin = min(positive_y) * 0.5
+            ymax = max(positive_y) * 5.0
+
+        else:
+            if min_y >= 0:
+                ymin = 0.0
+                ymax = max_y * y_factor if max_y > 0 else 1.0
+
+            else:
+                dy = max_y - min_y
+
+                if dy == 0:
+                    dy = abs(min_y) if min_y != 0 else 1.0
+
+                ymin = min_y - 0.1 * dy
+                ymax = max_y + (y_factor - 1.0) * dy
+
+    if logx and (xmin <= 0 or xmax <= xmin):
+        raise ValueError("Invalid X range for log scale.")
+
+    if logy and (ymin <= 0 or ymax <= ymin):
+        raise ValueError("Invalid Y range for log scale.")
+
+    # --------------------------------------------------
+    # Create canvas
+    # --------------------------------------------------
+
+    cw, ch = canvas_size
+
+    c = ROOT.TCanvas(
+        f"c_graph",
+        "",
+        cw,
+        ch
+    )
+
+    c.SetTopMargin(0.08)
+    c.SetBottomMargin(0.12)
+    c.SetLeftMargin(0.16)
+    c.SetRightMargin(0.05)
+
+    if logy:
+        c.SetLogy()
+
+    if logx:
+        c.SetLogx()
+
+    # --------------------------------------------------
+    # Dummy histogram / axis frame
+    # --------------------------------------------------
+
+    h_frame = ROOT.TH1F(
+        f"h_frame",
+        "",
+        1,
+        xmin,
+        xmax
+    )
+
+    h_frame.SetDirectory(0)
+
+    h_frame.SetMinimum(ymin)
+    h_frame.SetMaximum(ymax)
+
+    # Axis titles
+    if x_title is None:
+        x_title = graphs[0].GetXaxis().GetTitle()
+
+    if y_title is None:
+        y_title = graphs[0].GetYaxis().GetTitle()
+
+    h_frame.GetXaxis().SetTitle(x_title)
+    h_frame.GetYaxis().SetTitle(y_title)
+
+    # Axis formatting
+    h_frame.GetXaxis().SetTitleSize(0.04)
+    h_frame.GetYaxis().SetTitleSize(0.04)
+
+    h_frame.GetXaxis().SetLabelSize(0.04)
+    h_frame.GetYaxis().SetLabelSize(0.04)
+
+    h_frame.GetXaxis().SetTitleOffset(1.10)
+    h_frame.GetYaxis().SetTitleOffset(1.9)
+
+    h_frame.GetXaxis().SetLabelOffset(0.01)
+    h_frame.GetYaxis().SetLabelOffset(0.01)
+
+    h_frame.GetXaxis().SetNdivisions(510)
+    h_frame.GetYaxis().SetNdivisions(510)
+
+    # Draw frame
+    h_frame.Draw("AXIS")
+
+    # --------------------------------------------------
+    # Draw graphs
+    # --------------------------------------------------
+
+    # The frame already defines the axes, so remove "A"
+    # from the graph drawing option.
+    for i,g in enumerate(graphs_draw):
+        g.Draw(f"{draw_option[i].upper().replace("A", "")} SAME")
+
+    # Redraw axes on top
+    h_frame.Draw("AXIS SAME")
+
+    # --------------------------------------------------
+    # Legend
+    # --------------------------------------------------
+
+    if labels:
+
+        leg = ROOT.TLegend(*legend_pos)
+
+        leg.SetBorderSize(0)
+        leg.SetFillStyle(0)
+        leg.SetTextFont(42)
+        leg.SetTextSize(0.035)
+
+        if legend_header:
+            leg.SetHeader(legend_header)
+
+        leg.SetNColumns(legend_ncols)
+
+        for i, (g, label) in enumerate(zip(graphs_draw, labels)):
+            # Choose legend symbol according to drawing option
+            legend_opt = ""
+
+            if "L" in draw_option[i] or "C" in draw_option[i]:
+                legend_opt += "l"
+
+            if "P" in draw_option[i] or "*" in draw_option[i]:
+                legend_opt += "p"
+
+            if not legend_opt:
+                legend_opt = "l"
+            leg.AddEntry(g, label, legend_opt)
+
+        leg.Draw()
+
+    # --------------------------------------------------
+    # Optional text
+    # --------------------------------------------------
+
+    latex_objects = []
+
+    if extra_text_left:
+
+        latex = ROOT.TLatex()
+        latex.SetTextSize(0.035)
+        latex.SetTextFont(42)
+        latex.SetTextAlign(13)
+
+        latex.DrawLatexNDC(
+            0.16,
+            0.95,
+            extra_text_left
+        )
+
+        latex_objects.append(latex)
+
+    if extra_text_right:
+
+        latex = ROOT.TLatex()
+        latex.SetTextSize(0.035)
+        latex.SetTextFont(42)
+        latex.SetTextAlign(33)
+
+        latex.DrawLatexNDC(
+            0.95,
+            0.95,
+            extra_text_right
+        )
+
+        latex_objects.append(latex)
+
+    # --------------------------------------------------
+    # Save
+    # --------------------------------------------------
+
+    c.Modified()
+    c.Update()
+
+    c.SaveAs(f"{outname}.png")
+    c.SaveAs(f"{outname}.pdf")
+
+    return c

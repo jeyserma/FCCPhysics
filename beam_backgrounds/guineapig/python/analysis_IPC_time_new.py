@@ -19,7 +19,7 @@ ROOT.gROOT.SetBatch(1)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
-ROOT.EnableImplicitMT(4) # use all cores
+ROOT.EnableImplicitMT(2) # use all cores
 ROOT.DisableImplicitMT() # single core
 
 # load libraries
@@ -96,7 +96,7 @@ def meta_info(reader):
     minz_calc_, maxz_calc_ = -cutz*1000, cutz*1000
 
     infx = cutx / sigmax
-    infy = cutx / sigmay
+    infy = cuty / sigmay
     infz = cutz / sigmaz
 
     str_out += "\n"
@@ -111,11 +111,11 @@ def meta_info(reader):
     str_out += "\n"
     str_out += f"PRIMARY GRID DIMENSIONS\n"
     str_out += f"min/max x (nm)           {minx_:.2f}/{maxx_:.2f}\n"
-    str_out += f"min/max x (nm)           {miny_:.2f}/{maxy_:.2f}\n"
-    str_out += f"min/max x (um)           {minz_:.2f}/{maxz_:.2f}\n"
+    str_out += f"min/max y (nm)           {miny_:.2f}/{maxy_:.2f}\n"
+    str_out += f"min/max z (nm)           {minz_:.2f}/{maxz_:.2f}\n"
     str_out += f"min/max x (nm), calc     {minx_calc_:.2f}/{maxx_calc_:.2f}\n"
-    str_out += f"min/max x (nm), calc     {miny_calc_:.2f}/{maxy_calc_:.2f}\n"
-    str_out += f"min/max x (um), calc     {minz_calc_:.2f}/{maxz_calc_:.2f}\n"
+    str_out += f"min/max y (nm), calc     {miny_calc_:.2f}/{maxy_calc_:.2f}\n"
+    str_out += f"min/max z (nm), calc     {minz_calc_:.2f}/{maxz_calc_:.2f}\n"
 
     json_dict['grid'] = {}
     json_dict['grid']['nx'] = nx
@@ -216,18 +216,24 @@ def analysis(df, reader, ptype):
 
     if ptype == 0:
         infl_x = 1.0 # adapt according to production volume wrt inner grid
-        infl_y = 0.15
-        infl_z = 0.15
-        bins_x = (int(n_x)*5, infl_x*min_x_/1e3, infl_x*max_x_/1e3) # um
-        bins_y = (int(n_y)*5, infl_y*min_y_/1e0, infl_y*max_y_/1e0) # nm
-        bins_z = (int(n_z)*5, infl_z*min_z_/1e6, infl_z*max_z_/1e6) # mm
+        infl_y = 0.05 # zoom a bit in y
+        infl_z = 0.15 # zoom a bit in z
+        bins_x = (int(n_x), infl_x*min_x_/1e3, infl_x*max_x_/1e3) # um
+        bins_y = (int(n_y)*10, infl_y*min_y_/1e3, infl_y*max_y_/1e3) # um
+        bins_z = (int(n_z), infl_z*min_z_/1e6, infl_z*max_z_/1e6) # mm
 
     else:
         infl_xy = 12. # according to grids8
-        infl_z = 1.5
+        infl_xy = 1.1 # according to grids1
+        infl_z = 0.15
+        infl_y = 0.02
+        infl_z = 1.1
+        infl_y = 1.1
 
         bins_x = (int(n_x)*5, infl_xy*min_x_/1e6, infl_xy*max_x_/1e6) # mm
         bins_y = bins_x # square grid
+        bins_y = (int(n_x)*5, infl_y*min_x_/1e6, infl_y*max_x_/1e6) # mm
+        bins_y = (int(n_x)*5, infl_y*min_y_/1e6, infl_y*max_y_/1e6) # mm
         bins_z = (int(n_z)*5, infl_z*min_z_/1e6, infl_z*max_z_/1e6) # mm       
 
     bins_t = (int(n_z)*2, 0, n_z*2)
@@ -242,13 +248,20 @@ def analysis(df, reader, ptype):
 
 
     # MC particle kinematics
-    df = df.Define("sel_pairs", f"select_pairs(Pairs, {1 if ptype==1 else 2})")
-    df = df.Define("pairs", "Pairs[sel_pairs]")
-    df = df.Define("pairs_type", "PairsProcess[sel_pairs]")
-    #df = df.Alias("pairs_type", "pairs_process_type") ## TO FIX
+    df = df.Alias("pairs", "Pairs0" if ptype == 0 else "Pairs")
+    df = df.Alias("pairs_type", "Pairs0Process" if ptype == 0 else "PairsProcess")
     df = df.Define("sel_bw", "pairs_type == 0")
     df = df.Define("sel_bh", "pairs_type == 1")
     df = df.Define("sel_ll", "pairs_type == 2")
+
+
+    #df = df.Define("sel_pairs", f"select_pairs(Pairs, {1 if ptype==1 else 2})")
+    #df = df.Define("pairs", "Pairs[sel_pairs]")
+    #df = df.Define("pairs_type", "PairsProcess[sel_pairs]")
+    #df = df.Alias("pairs_type", "pairs_process_type") ## TO FIX
+    #df = df.Define("sel_bw", "pairs_type == 0")
+    #df = df.Define("sel_bh", "pairs_type == 1")
+    #df = df.Define("sel_ll", "pairs_type == 2")
 
 
     df = df.Define("pairs_p4", "makeP4Vector(pairs, 0.015)")
@@ -288,22 +301,24 @@ def analysis(df, reader, ptype):
     hists.append(df.Histo2D(("pairs_theta_pt", f"#theta-p_{{T}};log_{{10}}(#theta) (rad);log_{{10}}(p_{{T}}) (MeV)", *((500, -4, 1) + bins_p_log10)), "pairs_theta_rad_log10", "pairs_pt_log10"))
     
     if ptype == 0:
-        df = df.Define("pairs_x", "get_x(pairs)/1e3") # um
-        df = df.Define("pairs_y", "get_y(pairs)") # nm
-        df = df.Define("pairs_z", "get_z(pairs)/1e6") # mm
+        # defaults are in mm
+        df = df.Define("pairs_x", "get_x(pairs)*1e3") # um
+        df = df.Define("pairs_y", "get_y(pairs)*1e3") # um
+        df = df.Define("pairs_z", "get_z(pairs)") # mm /1e6
 
         hists.append(df.Histo1D(("pairs_x", "x distribution;x (#mum);Entries", *bins_x), "pairs_x"))
-        hists.append(df.Histo1D(("pairs_y", "y distribution;y (nm);Entries", *bins_y), "pairs_y"))
+        hists.append(df.Histo1D(("pairs_y", "y distribution;y (#mum);Entries", *bins_y), "pairs_y"))
         hists.append(df.Histo1D(("pairs_z", "z distribution;z (mm);Entries", *bins_z), "pairs_z"))
 
-        hists.append(df.Histo2D(("pairs_xy", "xy distribution;x (#mum);y (nm)", *(bins_x + bins_y)), "pairs_x", "pairs_y"))
+        hists.append(df.Histo2D(("pairs_xy", "xy distribution;x (#mum);y (#mum)", *(bins_x + bins_y)), "pairs_x", "pairs_y"))
         hists.append(df.Histo2D(("pairs_xz", "xz distribution;x (#mum);z (mm)", *(bins_x + bins_z)), "pairs_x", "pairs_z"))
-        hists.append(df.Histo2D(("pairs_yz", "yz distribution;y (nm);z (mm)", *(bins_y + bins_z)), "pairs_y", "pairs_z"))
+        hists.append(df.Histo2D(("pairs_yz", "yz distribution;y (#mum);z (mm)", *(bins_y + bins_z)), "pairs_y", "pairs_z"))
     
     if ptype == 1:
-        df = df.Define("pairs_x", "get_x(pairs)/1e6")
-        df = df.Define("pairs_y", "get_y(pairs)/1e6")
-        df = df.Define("pairs_z", "get_z(pairs)/1e6")
+        # defaults are in mm
+        df = df.Define("pairs_x", "get_x(pairs)")
+        df = df.Define("pairs_y", "get_y(pairs)")
+        df = df.Define("pairs_z", "get_z(pairs)") # /1e6
 
         hists.append(df.Histo1D(("pairs_x", "x distribution;x (mm);Entries", *bins_x), "pairs_x"))
         hists.append(df.Histo1D(("pairs_y", "y distribution;y (mm);Entries", *bins_y), "pairs_y"))
@@ -395,50 +410,48 @@ def get_hist(hname, hists):
 
 if __name__ == "__main__":
 
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_studies/FCCee_Z_LCC_V105/Z128_2T_grids1/"
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_secondary_grid_studies/FCCee_Z_GHC_V25p1/CFG_64_64_64_1_GRIDS1_fixes2_grid"
+    #input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/warpx_comparison/FCCee_Z_LCC_V105/CFG1_128_128_128_1_NM1E5_GRID1/"
+
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_secondary_grid_studies/FCCee_Z_GHC_V25p1/CFG_TEST_2G_CLOSURE"
+    #input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_primary_grid_studies/FCCee_Z_GHC_V25p1/CFG_GRIDT_64_64_64_1/"
+
+
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--accelerator", type=str, help="Accelerator config", default="FCCee_Z_GHC_V23")
-    parser.add_argument("--parameter_set", type=str, help="Parameter set", default="Z256_2T_grids8")
-    parser.add_argument("--campaign", type=str, help="Campaign (as in config.py)", choices=["ipc", "ipc_studies", "ipc_sensitivity_studies"], default="ipc")
+    parser.add_argument("--input_dir", type=str, help="Input directory", default=None)
     parser.add_argument("--maxfiles", type=int, help="number of files", default=-1)
     args = parser.parse_args()
 
+    if args.input_dir:
+        input_dir = args.input_dir
 
-    #FCCee_Z_GHC_V25p1
-    #FCCee_Z_LCC_V105_v2_50ns
-    #FCCee_Z_LCC_V105_v2_25ns
-    #FCCee_Z_LCC_V105
-    #FCCee_Z_GHC_V25p3_4
-    #FCCee_TOP_GHC_V25p1
-    #FCCee_WW_GHC_V25p1
-    #FCCee_ZH_GHC_V25p1
-    #FCCee_Z_4IP_GHC_V24p4
-    #FCCee_Z_CDR
-    #FCCee_Z_GHC_V23
+    input_dir = input_dir.rstrip('\\').rstrip('/').replace("//", "/")
+    parameter_set = input_dir.split("/")[-1]
+    accelerator = input_dir.split("/")[-2]
+    campaign =  input_dir.split("/")[-3]
+    logger.info(f"Parameter set: {parameter_set}")
+    logger.info(f"Accelerator:   {accelerator}")
+    logger.info(f"Campaign:      {campaign}")
 
-
-    accelerator = args.accelerator
-    parameter_set = args.parameter_set
     maxfiles = args.maxfiles
-    campaign = args.campaign
     json_dict = {}
     str_out = ""
-    
-    output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/{campaign}/{accelerator}/{parameter_set}/"
-    output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/testTiming/"
-    os.system(f"mkdir -p {output_dir}")
 
-    cfg = getattr(gpconfig, campaign)
-    input_dir = cfg[accelerator][parameter_set]['dir']
-    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_time_studies_official//FCCee_Z_GHC_V25p1/Z256_2T_grids8/merged/"
+    output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/{campaign}/{accelerator}/{parameter_set}/"
+    os.system(f"mkdir -p {output_dir}")
+    os.system(f"cp /home/submit/jaeyserm/public_html/fccee/guineapig/validation/index.php {output_dir}")
+
     logger.info(f"Run over input directory {input_dir}")
     input_files = glob.glob(f"{input_dir}/*.root")
+    if len(input_files) == 0: # try unmerged
+        input_files = glob.glob(f"{input_dir}/unmerged/*.root")
     logger.info(f"Found {len(input_files)} input files")
     if maxfiles > 0:
         input_files = input_files[:maxfiles]
 
     
-
-
     logger.info(f"Get meta information")
     time0 = time.time()
     reader = functions.GuineaPigReader(input_files)
@@ -450,10 +463,11 @@ if __name__ == "__main__":
     logger.info(f"Start analysis")
     time0 = time.time()
     df = ROOT.RDataFrame("events", input_files)
+    nevents = df.Count()
     
     hists0 = analysis(df, reader, 0)
     hists1 = analysis(df, reader, 1)
-    ROOT.RDF.RunGraphs(hists0 + hists1);
+    ROOT.RDF.RunGraphs(hists0 + hists1)
     df.Count()
     time1 = time.time()
     logger.info(f"Analysis done in {int(time1-time0)} seconds")
@@ -469,7 +483,6 @@ if __name__ == "__main__":
     fout.cd("pairs0")
     for h in hists0:
         #h.Scale(1./len(input_files)) # normalize per BX
-        print(h.GetName())
         h.Write()
     fout.mkdir("pairs")
     fout.cd("pairs")
@@ -478,7 +491,8 @@ if __name__ == "__main__":
         h.Write()
 
     fout.cd()
-    p = ROOT.TParameter(int)("nevents", len(input_files))
+    n = nevents.GetValue()
+    p = ROOT.TParameter(int)("nevents", n)
     p.Write()
 
     fout.Close()

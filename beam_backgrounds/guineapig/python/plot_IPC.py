@@ -21,49 +21,43 @@ def get_hist(file_handle, hist_name, unique_tag=""):
     out_name = f"{h.GetName()}_{unique_tag}" if unique_tag else h.GetName()
     h = h.Clone(out_name)
     h.SetDirectory(0)
+
+    for i in range(1, h.GetNbinsX() + 1):
+        if h.GetBinContent(i) == 0:
+            h.SetBinContent(i, -1)
+            h.SetBinError(i, 0.0)
+
+
     return h
 
 
 def main():
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--accelerator", type=str, help="Accelerator config", default="FCCee_WW_GHC_V25p1")
-    parser.add_argument("--parameter_set", type=str, help="Parameter set", default="Z256_2T_grids8")
-    parser.add_argument("--maxfiles", type=int, help="number of files", default=-1)
-    parser.add_argument("--campaign", type=str, help="Campaign (as in config.py)", choices=["ipc", "ipc_studies", "ipc_sensitivity_studies"], default="ipc")
-    args = parser.parse_args()
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_studies/FCCee_Z_LCC_V105/Z128_2T_grids1/"
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_secondary_grid_studies/FCCee_Z_GHC_V25p1/CFG_TEST_2G_CLOSURE"
+    #input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_primary_grid_studies/FCCee_Z_GHC_V25p1/CFG_GRIDT_64_64_64_1/"
+
     '''
+CFG_GRIDD_16_350_16
+CFG_GRIDD_32_700_32
+CFG_GRIDD_64_1400_64
+CFG_GRIDD_128_2800_128
 
-
-    #FCCee_Z_GHC_V25p1
-    #FCCee_Z_LCC_V105_v2_50ns
-    #FCCee_Z_LCC_V105_v2_25ns
-    #FCCee_Z_LCC_V105
-    #FCCee_Z_GHC_V25p3_4
-    #FCCee_TOP_GHC_V25p1
-    #FCCee_WW_GHC_V25p1
-    #FCCee_ZH_GHC_V25p1
-    #FCCee_Z_4IP_GHC_V24p4
-    #FCCee_Z_CDR
-    #FCCee_Z_GHC_V23
-
-
-
-
+CFG_GRIDD1_16_175_16
+CFG_GRIDD1_32_350_32
+CFG_GRIDD1_64_700_64
+CFG_GRIDD1_128_1400_128
 
 
     '''
-    
-    accelerator = args.accelerator
-    parameter_set = args.parameter_set
-    maxfiles = args.maxfiles
-    campaign = args.campaign
-    cfg = getattr(gpconfig, campaign)
-    label = cfg[accelerator][parameter_set]['label']
-    
+    ###################################
+    input_dir = input_dir.rstrip('\\').rstrip('/').replace("//", "/")
+    parameter_set = input_dir.split("/")[-1]
+    accelerator = input_dir.split("/")[-2]
+    campaign =  input_dir.split("/")[-3]
+    label = gpconfig.acc_cfg[accelerator]['label']
+
     output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/{campaign}/{accelerator}/{parameter_set}/"
-    output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/testTiming/"
-
     os.system(f"mkdir -p {output_dir}")
     os.system(f"cp /home/submit/jaeyserm/public_html/fccee/guineapig/validation/index.php {output_dir}")
     input_file = f"{output_dir}/output.root"
@@ -125,6 +119,7 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_n", "pairs0/pairs_n_ll", "pairs0/pairs_n_bh", "pairs0/pairs_n_bw"],
+            "hist_names": ["pairs0/pairs_n"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "scale_factor": [1, 1, 0.5, 0.15],
             "outname": "pairs_n",
@@ -138,12 +133,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_theta", "pairs0/pairs_theta_ll", "pairs0/pairs_theta_bh", "pairs0/pairs_theta_bw"],
+            "hist_names": ["pairs0/pairs_theta"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_theta",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_theta", "pairs/pairs_theta_ll", "pairs/pairs_theta_bh", "pairs/pairs_theta_bw"],
+            "hist_names": ["pairs/pairs_theta"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_theta",
             "normalize": True,
@@ -156,12 +153,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_phi", "pairs0/pairs_phi_ll", "pairs0/pairs_phi_bh", "pairs0/pairs_phi_bw"],
+            "hist_names": ["pairs0/pairs_phi"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_phi",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_phi", "pairs/pairs_phi_ll", "pairs/pairs_phi_bh", "pairs/pairs_phi_bw"],
+            "hist_names": ["pairs/pairs_phi"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_phi",
             "normalize": True,
@@ -174,12 +173,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_E_log10", "pairs0/pairs_E_log10_ll", "pairs0/pairs_E_log10_bh", "pairs0/pairs_E_log10_bw"],
+            "hist_names": ["pairs0/pairs_E_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_E",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_E_log10", "pairs/pairs_E_log10_ll", "pairs/pairs_E_log10_bh", "pairs/pairs_E_log10_bw"],
+            "hist_names": ["pairs/pairs_E_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_E",
             "normalize": True,
@@ -192,12 +193,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_p_log10", "pairs0/pairs_p_log10_ll", "pairs0/pairs_p_log10_bh", "pairs0/pairs_p_log10_bw"],
+            "hist_names": ["pairs0/pairs_p_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_p",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_p_log10", "pairs/pairs_p_log10_ll", "pairs/pairs_p_log10_bh", "pairs/pairs_p_log10_bw"],
+            "hist_names": ["pairs/pairs_p_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_p",
             "normalize": True,
@@ -210,12 +213,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_pt_log10", "pairs0/pairs_pt_log10_ll", "pairs0/pairs_pt_log10_bh", "pairs0/pairs_pt_log10_bw"],
+            "hist_names": ["pairs0/pairs_pt_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_pt",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_pt_log10", "pairs/pairs_pt_log10_ll", "pairs/pairs_pt_log10_bh", "pairs/pairs_pt_log10_bw"],
+            "hist_names": ["pairs/pairs_pt_log10"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_pt",
             "normalize": True,
@@ -228,12 +233,14 @@ def main():
         },
         {
             "hist_names": ["pairs0/pairs_x", "pairs0/pairs_x_ll", "pairs0/pairs_x_bh", "pairs0/pairs_x_bw"],
+            "hist_names": ["pairs0/pairs_x"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_x",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_x", "pairs/pairs_x_ll", "pairs/pairs_x_bh", "pairs/pairs_x_bw"],
+            "hist_names": ["pairs/pairs_x"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_x",
             "normalize": True,
@@ -248,12 +255,14 @@ def main():
         
         {
             "hist_names": ["pairs0/pairs_y", "pairs0/pairs_y_ll", "pairs0/pairs_y_bh", "pairs0/pairs_y_bw"],
+            "hist_names": ["pairs0/pairs_y"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_y",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_y", "pairs/pairs_y_ll", "pairs/pairs_y_bh", "pairs/pairs_y_bw"],
+            "hist_names": ["pairs/pairs_y"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_y",
             "normalize": True,
@@ -268,12 +277,14 @@ def main():
         
         {
             "hist_names": ["pairs0/pairs_z", "pairs0/pairs_z_ll", "pairs0/pairs_z_bh", "pairs0/pairs_z_bw"],
+            "hist_names": ["pairs0/pairs_z"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs0_z",
             "normalize": True,
         },
         {
             "hist_names": ["pairs/pairs_z", "pairs/pairs_z_ll", "pairs/pairs_z_bh", "pairs/pairs_z_bw"],
+            "hist_names": ["pairs/pairs_z"],
             "labels": ["All pairs", "Landau-Lifshitz (LL)", "Bethe-Heitler (BH)", "Breit-Wheeler (BW)"],
             "outname": "pairs1_z",
             "normalize": True,

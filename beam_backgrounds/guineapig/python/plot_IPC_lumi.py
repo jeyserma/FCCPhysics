@@ -13,6 +13,7 @@ ROOT.TGaxis.SetExponentOffset(-0.08, 0.01, "y")
 
 def main():
 
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument("--accelerator", type=str, help="Accelerator config", default="FCCee_Z_GHC_V23")
     parser.add_argument("--parameter_set", type=str, help="Parameter set", default="Z256_2T_grids8")
@@ -40,7 +41,23 @@ def main():
     campaign = args.campaign
     cfg = getattr(gpconfig, campaign)
     label = cfg[accelerator][parameter_set]['label']
+    '''
+
+
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_studies/FCCee_Z_LCC_V105/Z128_2T_grids1/"
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_primary_grid_studies/FCCee_Z_GHC_V25p1/CFG_GRIDD1_128_1400_128"
+    input_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/warpx_comparison/FCCee_Z_LCC_V105/CFG1_128_128_128_1_NM1E5_GRID1/"
+
+
+    ###################################
+    input_dir = input_dir.rstrip('\\').rstrip('/').replace("//", "/")
+    parameter_set = input_dir.split("/")[-1]
+    accelerator = input_dir.split("/")[-2]
+    campaign =  input_dir.split("/")[-3]
+    label = gpconfig.acc_cfg[accelerator]['label']
+
     vertical_offset = 1.3
+    rebin = 2
     
     output_dir = f"/home/submit/jaeyserm/public_html/fccee/guineapig/validation/{campaign}/{accelerator}/{parameter_set}/"
     os.system(f"mkdir -p {output_dir}")
@@ -57,6 +74,7 @@ def main():
     for i in range(1, h_lumi.GetNbinsX() + 1):
         h_lumi.SetBinContent(i, h_lumi_raw.GetBinContent(i)/1e24) # convert to powers of 24
     h_lumi_int = h_lumi.GetCumulative()
+    h_lumi.Rebin(rebin)
     h_lumi_int.Scale(1e-4) # convert to 1e28
 
     c = ROOT.TCanvas("c", "two y axes", 800, 650)

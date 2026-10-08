@@ -1,4 +1,17 @@
 
+acc_cfg = {}
+acc_cfg['FCCee_Z_LCC_V105'] =  {
+    "label"     :"LCC V105, 91.2 GeV",
+    "n_bunches" : 12000, # cross-check
+}
+
+
+acc_cfg['FCCee_Z_GHC_V25p1'] =  {
+    "label"     : "GHC V25.1 (FSR) 91.2 GeV",
+    "n_bunches" : 12000, # cross-check
+}
+
+
 base_dir = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc/"
 base_dir_studies = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_studies/"
 base_dir_ipc_sensitivity_studies = "/ceph/submit/data/group/fcc/ee/beam_backgrounds/guineapig/ipc_sensitivity_studies/"
